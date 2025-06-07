@@ -1,0 +1,35 @@
+﻿{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Development Server",
+      "type": "npm",
+      "script": "dev",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build",
+      "type": "npm",
+      "script": "build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test",
+      "type": "npm",
+      "script": "test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint",
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": []
+    }
+  ]
+}

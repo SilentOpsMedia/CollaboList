@@ -1,0 +1,18 @@
+# Browsers that we support
+
+>= 1%
+last 2 major versions
+not dead
+not ie 11
+not op_mini all
+not ie_mob 11
+not and_uc 12.12
+not baidu 7.12
+not kaios 2.5
+not op_mob 12.1
+not and_qq 10.4
+not and_chr 0
+not and_ff 68
+not android 4.4.3-4.4.4
+not samsung 4
+not ios_saf 9.3

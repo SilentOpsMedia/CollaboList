@@ -1,9 +1,26 @@
+/**
+ * SignUp Component
+ * 
+ * Handles user registration with email, password, and display name.
+ * Integrates with Firebase Authentication and Firestore for user management.
+ * 
+ * @component
+ * @returns {JSX.Element} The sign-up form component
+ */
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// Hooks
 import { useAuthContext } from '../../contexts/AuthContext';
+
+// Services
 import { userServices } from '../../services/userServices';
 
-export default function SignUp() {
+// Types
+import { User } from '../../types/user';
+
+const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const { signUp, error } = useAuthContext();
   const [email, setEmail] = useState('');
@@ -11,15 +28,27 @@ export default function SignUp() {
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  /**
+   * Handles form submission for user registration
+   * @param {React.FormEvent} e - The form event
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic form validation
+    if (!email || !password) {
+      console.error('Email and password are required');
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
+      // 1. Create authentication account
       await signUp(email, password);
       
-      // Create user document in Firestore
-      const user = {
+      // 2. Create user document in Firestore
+      const user: User = {
         id: email, // Using email as ID for simplicity
         email,
         displayName: displayName || email.split('@')[0],
@@ -29,16 +58,23 @@ export default function SignUp() {
       
       await userServices.createUser(user);
       
+      // 3. Redirect to dashboard on success
       navigate('/dashboard');
     } catch (err) {
-      console.error('Error signing up:', err);
+      console.error('Error during sign up:', err);
+      // Error is already handled by AuthContext
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+    <form 
+      onSubmit={handleSubmit} 
+      className="space-y-6"
+      aria-label="Sign up form"
+      data-testid="signup-form"
+    >
       <div className="rounded-md shadow-sm -space-y-px">
         <div>
           <label htmlFor="displayName" className="sr-only">
@@ -106,4 +142,6 @@ export default function SignUp() {
       </div>
     </form>
   );
-}
+};
+
+export default SignUp;

@@ -1,12 +1,175 @@
+/**
+ * Main Stylesheet for CollaboList Application
+ * 
+ * This file contains global styles and CSS custom properties (variables)
+ * that are used throughout the application.
+ */
+
+/* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/**
+ * CSS Custom Properties (Variables)
+ * Define reusable values that can be used throughout the stylesheet
+ */
+:root {
+  /* Color Palette */
+  --color-primary: #4f46e5;       /* Indigo-600 */
+  --color-primary-hover: #4338ca;  /* Indigo-700 */
+  --color-text: #1f2937;          /* Gray-800 */
+  --color-text-light: #6b7280;    /* Gray-500 */
+  --color-bg: #f9fafb;            /* Gray-50 */
+  --color-white: #ffffff;
+  --color-border: #e5e7eb;        /* Gray-200 */
+  --color-success: #10b981;       /* Green-500 */
+  --color-error: #ef4444;         /* Red-500 */
+  
+  /* Spacing */
+  --spacing-1: 0.25rem;  /* 4px */
+  --spacing-2: 0.5rem;   /* 8px */
+  --spacing-3: 0.75rem;  /* 12px */
+  --spacing-4: 1rem;     /* 16px */
+  --spacing-6: 1.5rem;   /* 24px */
+  
+  /* Border Radius */
+  --rounded-sm: 0.125rem;  /* 2px */
+  --rounded: 0.375rem;     /* 6px */
+  --rounded-md: 0.5rem;    /* 8px */
+  --rounded-lg: 0.75rem;   /* 12px */
+  --rounded-full: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-.App {
+/**
+ * Base Styles
+ * These styles apply to all elements by default
+ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Set base font and smooth text rendering */
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  line-height: 1.5;
+}
+
+/* Code elements styling */
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/**
+ * Utility Classes
+ * Reusable single-purpose classes for common styling needs
+ */
+
+/* Container for centering content with max-width */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-4);
+}
+
+/* Flex utilities */
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+/* Text utilities */
+.text-center {
   text-align: center;
+}
+
+/* Button reset */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 100%;
+  line-height: inherit;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+/* Links */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+/* Form elements */
+input,
+button,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: inherit;
+  margin: 0;
+}
+
+/* Remove default focus outline and add custom focus styles */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Responsive images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* App-specific styles */
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Animation keyframes */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading spinner */
+.animate-spin {
+  animation: spin 1s linear infinite;
 }

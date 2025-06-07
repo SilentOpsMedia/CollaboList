@@ -1,46 +1,80 @@
-// Import the functions you need from the SDKs you need
+/**
+ * Firebase Configuration and Initialization
+ * 
+ * This file sets up and configures Firebase services for the application.
+ * It initializes the Firebase app and exports the necessary services.
+ */
+
+// Core Firebase SDK imports
 import { initializeApp } from 'firebase/app';
+
+// Authentication service imports
 import { 
-  getAuth, 
-  onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup
+  getAuth,              // Firebase Authentication service
+  onAuthStateChanged,  // Listener for auth state changes
+  GoogleAuthProvider,  // Google authentication provider
+  signInWithPopup,     // Popup-based sign-in method
+  OAuthProvider,       // Base class for OAuth providers
+  AuthProvider         // Base type for all auth providers
 } from 'firebase/auth';
+
+// Firestore database service
 import { getFirestore } from 'firebase/firestore';
+
+// Firebase Storage service for file uploads
 import { getStorage } from 'firebase/storage';
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
+/**
+ * Firebase configuration object
+ * 
+ * Contains all the necessary configuration details to connect to your Firebase project.
+ * This data is safe to expose in your frontend code as per Firebase's security rules.
+ */
 const firebaseConfig = {
-  apiKey: "AIzaSyBdoHiw_tfm3E78KhG7u3CMax5Ruz4ON9o",
-  authDomain: "collab-checklist-4de23.firebaseapp.com",
-  projectId: "collab-checklist-4de23",
-  storageBucket: "collab-checklist-4de23.firebasestorage.app",
-  messagingSenderId: "217387521862",
-  appId: "1:217387521862:web:d374f541783d09cafd3747"
+  apiKey: "AIzaSyBdoHiw_tfm3E78KhG7u3CMax5Ruz4ON9o",          // API key for Firebase services
+  authDomain: "collab-checklist-4de23.firebaseapp.com",    // Domain for Firebase Authentication
+  projectId: "collab-checklist-4de23",                     // Your Firebase project ID
+  storageBucket: "collab-checklist-4de23.firebasestorage.app", // Storage bucket for files
+  messagingSenderId: "217387521862",                       // Sender ID for Firebase Cloud Messaging
+  appId: "1:217387521862:web:d374f541783d09cafd3747"        // Your Firebase App ID
 };
 
-// Initialize Firebase
+/**
+ * Initialize Firebase with the provided configuration
+ * 
+ * This creates and initializes a Firebase app instance that can be used
+ * throughout the application to access Firebase services.
+ */
 console.log('Initializing Firebase with config:', firebaseConfig);
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase services
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+/**
+ * Initialize Firebase Services
+ * 
+ * These services are initialized once here and exported for use throughout the app.
+ * This ensures we're using the same instance of each service everywhere.
+ */
+const auth = getAuth(app);        // Authentication service
+const db = getFirestore(app);     // Firestore database
+const storage = getStorage(app);  // Cloud Storage for files
 
 console.log('Firebase services initialized successfully');
 
 // Log auth state changes
 onAuthStateChanged(auth, (user) => {
   console.log('Auth state changed:', user ? 'User signed in' : 'No user signed in');
-  console.log('Current user:', user);
 });
 
-// Google Auth Provider
+// Auth Providers
 const googleProvider = new GoogleAuthProvider();
+const appleProvider = new OAuthProvider('apple.com');
+
+// Configure Apple provider
+appleProvider.addScope('email');
+appleProvider.addScope('name');
 
 // Interface for Google Sign-In response
 export interface GoogleSignInResult {
@@ -53,19 +87,28 @@ export interface GoogleSignInResult {
   token: string | undefined;
 }
 
-// Function to sign in with Google
-export const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
+/**
+ * Sign in with Google using Firebase Authentication
+ * @returns Promise that resolves with user info and access token
+ */
+const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     // This gives you a Google Access Token. You can use it to access the Google API.
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const token = credential?.accessToken;
-    // The signed-in user info.
-    const { uid, email, displayName, photoURL } = result.user;
     
-    return { 
-      user: { uid, email, displayName, photoURL },
-      token 
+    // The signed-in user info
+    const user = result.user;
+    
+    return {
+      user: {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      },
+      token: token
     };
   } catch (error) {
     console.error('Error signing in with Google:', error);
@@ -73,5 +116,23 @@ export const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
   }
 };
 
-export { auth, db, storage, googleProvider };
+// Function to check if device is iOS or Safari
+const isIosOrSafari = (): boolean => {
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(userAgent);
+  const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent);
+  return isIos || isSafari;
+};
+
+// Export all necessary Firebase services and utilities
+export { 
+  auth,              // Firebase Authentication service
+  db,                // Firestore database
+  storage,           // Cloud Storage
+  signInWithGoogle,  // Google sign-in function
+  googleProvider,    // Google auth provider
+  appleProvider,     // Apple auth provider
+  isIosOrSafari     // Device detection utility
+};
+
 export default app;

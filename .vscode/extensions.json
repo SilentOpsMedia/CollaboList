@@ -1,0 +1,16 @@
+﻿{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "pkief.material-icon-theme",
+    "bradlc.vscode-tailwindcss",
+    "streetsidesoftware.code-spell-checker",
+    "mikestead.dotenv",
+    "eamodio.gitlens",
+    "prisma.prisma",
+    "graphql.vscode-graphql",
+    "ms-vscode.vscode-typescript-next",
+    "ms-vscode.js-debug",
+    "wix.vscode-import-cost"
+  ]
+}

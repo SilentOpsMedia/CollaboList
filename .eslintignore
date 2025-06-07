@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+
+# Test coverage
+coverage/
+
+# Environment files
+.env
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local development
+.local-*
+
+# Production
+.cache/
+.temp/
+.tmp/
+
+# TypeScript declaration files
+**/*.d.ts
+# Auto-generated files
+**/generated/*
+# Next.js
+.next/
+# Vite
+.vite/
+# Public directory
+public/
+# Storybook
+.storybook/
+# Cypress
+cypress/
+# Playwright
+tests/
+# Jest
+jest.config.js
+# Build output
+out/
+# Cache
+.eslintcache
+# Misc
+*.min.js
+*.min.css
+*.snap
