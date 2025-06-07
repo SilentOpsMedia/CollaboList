@@ -1,8 +1,54 @@
 /**
- * User Type Definitions
+ * @file src/types/user.ts
+ * @description TypeScript type definitions for User entities and related data structures
  * 
- * This file contains all type definitions related to users in the application.
- * These types are used for type safety and documentation across the codebase.
+ * This module defines all TypeScript interfaces and types related to user management
+ * in the application. It provides type safety for user data across the entire codebase,
+ * from database operations to UI components.
+ * 
+ * ## Key Types
+ * - `User`: Complete user data structure as stored in the database
+ * - `UserInput`: Data required to create a new user
+ * - `UserUpdate`: Fields that can be updated for an existing user
+ * - `UserCredentials`: Authentication credentials (email/password)
+ * - `PublicUserProfile`: User data safe for public display
+ * - `UserResponse`: Standardized API response format for user operations
+ * 
+ * ## Usage Examples
+ * ```typescript
+ * // Type-safe user creation
+ * const newUser: UserInput = {
+ *   email: 'user@example.com',
+ *   password: 'securePassword123!',
+ *   displayName: 'John Doe',
+ *   role: 'user' as const,
+ * };
+ * 
+ * // Type-safe user update
+ * const updates: UserUpdate = {
+ *   displayName: 'John Updated',
+ *   photoURL: 'https://example.com/new-avatar.jpg',
+ *   metadata: {
+ *     preferences: {
+ *       theme: 'dark',
+ *       notifications: { email: true, push: false }
+ *     }
+ *   }
+ * };
+ * 
+ * // Type-safe API response handling
+ * function handleUserResponse(response: UserResponse) {
+ *   if (response.success && response.data) {
+ *     console.log('User data:', response.data);
+ *   } else {
+ *     console.error('Error:', response.error?.message);
+ *   }
+ * }
+ * ```
+ * 
+ * @see https://www.typescriptlang.org/docs/handbook/2/objects.html
+ * @see https://firebase.google.com/docs/reference/js/firebase.User
+ * @module types/user
  */
 
 import { Timestamp } from 'firebase/firestore';
@@ -150,7 +196,7 @@ export interface UserInput {
 
 /**
  * Data that can be updated for an existing user
- * Excludes immutable fields like id and email
+ * Excludes immutable fields like id
  */
 export interface UserUpdate {
   /** Updated display name */
@@ -158,6 +204,9 @@ export interface UserUpdate {
   
   /** Updated profile photo URL */
   photoURL?: string | null;
+  
+  /** Updated email address */
+  email?: string;
   
   /** Whether the user is active */
   isActive?: boolean;

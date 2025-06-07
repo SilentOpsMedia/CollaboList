@@ -1,8 +1,32 @@
 /**
- * Firebase Configuration and Initialization
+ * @file src/lib/firebase.ts
+ * @description Firebase configuration and service initialization
  * 
- * This file sets up and configures Firebase services for the application.
- * It initializes the Firebase app and exports the necessary services.
+ * This module handles the initialization and configuration of all Firebase services
+ * used in the application. It provides a centralized location for Firebase setup
+ * and exports the initialized services for use throughout the application.
+ * 
+ * ## Services Initialized
+ * - Firebase App: Core Firebase functionality
+ * - Authentication: User sign-in and management
+ * - Firestore: NoSQL database for structured data
+ * - Storage: File storage and serving
+ * 
+ * ## Environment Variables
+ * The following environment variables must be set in your `.env` file:
+ * - `VITE_FIREBASE_API_KEY`
+ * - `VITE_FIREBASE_AUTH_DOMAIN`
+ * - `VITE_FIREBASE_PROJECT_ID`
+ * - `VITE_FIREBASE_STORAGE_BUCKET`
+ * - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+ * - `VITE_FIREBASE_APP_ID`
+ * 
+ * @see https://firebase.google.com/docs/web/setup
+ * @see https://firebase.google.com/docs/auth
+ * @see https://firebase.google.com/docs/firestore
+ * @see https://firebase.google.com/docs/storage
+ * 
+ * @module lib/firebase
  */
 
 // Core Firebase SDK imports

@@ -1,8 +1,54 @@
 /**
- * User Services
+ * @file src/services/userServices.ts
+ * @description User management service for Firestore operations
  * 
- * This module provides functions to interact with user data in Firestore.
- * It handles CRUD operations for user documents and ensures data consistency.
+ * This module provides a collection of functions to interact with user data
+ * stored in Firestore. It handles all CRUD (Create, Read, Update, Delete) operations
+ * for user documents, ensuring data consistency and type safety.
+ * 
+ * ## Features
+ * - Create new user documents
+ * - Retrieve user data by ID
+ * - Update existing user information
+ * - Soft delete users (mark as inactive)
+ * - Type-safe operations with TypeScript interfaces
+ * 
+ * ## Error Handling
+ * All functions throw errors that should be caught and handled by the calling code.
+ * Common error cases include:
+ * - Document not found
+ * - Permission denied
+ * - Network errors
+ * - Invalid data
+ * 
+ * ## Usage Example
+ * ```typescript
+ * // Create a new user
+ * await userServices.createUser({
+ *   id: 'user123',
+ *   email: 'user@example.com',
+ *   displayName: 'John Doe',
+ *   photoURL: 'https://example.com/avatar.jpg',
+ *   createdAt: new Date().toISOString(),
+ *   updatedAt: new Date().toISOString(),
+ *   isActive: true
+ * });
+ * 
+ * // Get user data
+ * const user = await userServices.getUser('user123');
+ * 
+ * // Update user
+ * await userServices.updateUser('user123', {
+ *   displayName: 'John Updated',
+ *   photoURL: 'https://example.com/new-avatar.jpg'
+ * });
+ * 
+ * // Deactivate user
+ * await userServices.deactivateUser('user123');
+ * ```
+ * 
+ * @see https://firebase.google.com/docs/firestore
+ * @module services/userServices
  */
 
 // Firebase imports
@@ -70,8 +116,13 @@ export const userServices = {
   async updateUser(userId: string, updates: UserUpdate): Promise<void> {
     try {
       const userRef = doc(db, 'users', userId);
+      
+      // Create a new object with the updates, ensuring null values are handled correctly
       const updateData: Partial<User> = {
         ...updates,
+        // Convert null values to undefined to match the User type
+        photoURL: updates.photoURL === null ? undefined : updates.photoURL,
+        deletedAt: updates.deletedAt === null ? undefined : updates.deletedAt,
         updatedAt: new Date(),
       };
       

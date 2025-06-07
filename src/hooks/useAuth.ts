@@ -1,17 +1,71 @@
 /**
- * useAuth Hook
+ * @file src/hooks/useAuth.ts
+ * @description Authentication state management hook
  * 
- * A custom React hook that provides authentication state and methods.
- * Handles user authentication state, sign up, sign in, and sign out functionality.
- * Integrates with Firebase Authentication for user management.
+ * A custom React hook that provides a clean interface for managing user authentication
+ * throughout the application. It encapsulates Firebase Authentication logic and provides
+ * a simple API for components to interact with the authentication system.
  * 
- * @returns {Object} An object containing:
- *   - user: The current authenticated user or null
- *   - loading: Boolean indicating if authentication state is being checked
- *   - error: Any authentication error that occurred
- *   - signUp: Function to register a new user
- *   - signIn: Function to sign in an existing user
- *   - signOut: Function to sign out the current user
+ * ## Features
+ * - Tracks authentication state (signed in/out)
+ * - Handles user registration with email/password
+ * - Manages user login/logout
+ * - Provides loading and error states
+ * - Automatically syncs with Firebase Auth state
+ * 
+ * ## Usage
+ * ```tsx
+ * function LoginForm() {
+ *   const { user, loading, error, signIn, signUp } = useAuth();
+ *   const [email, setEmail] = useState('');
+ *   const [password, setPassword] = useState('');
+ *   const [isLogin, setIsLogin] = useState(true);
+ * 
+ *   const handleSubmit = async (e) => {
+ *     e.preventDefault();
+ *     try {
+ *       if (isLogin) {
+ *         await signIn(email, password);
+ *       } else {
+ *         await signUp(email, password);
+ *       }
+ *     } catch (err) {
+ *       console.error('Authentication error:', err);
+ *     }
+ *   };
+ * 
+ *   if (loading) return <div>Loading...</div>;
+ *   if (user) return <div>Welcome, {user.email}!</div>;
+ *   
+ *   return (
+ *     <form onSubmit={handleSubmit}>
+ *       <input
+ *         type="email"
+ *         value={email}
+ *         onChange={(e) => setEmail(e.target.value)}
+ *         placeholder="Email"
+ *         required
+ *       />
+ *       <input
+ *         type="password"
+ *         value={password}
+ *         onChange={(e) => setPassword(e.target.value)}
+ *         placeholder="Password"
+ *         required
+ *       />
+ *       <button type="submit">
+ *         {isLogin ? 'Sign In' : 'Sign Up'}
+ *       </button>
+ *       <button type="button" onClick={() => setIsLogin(!isLogin)}>
+ *         {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+ *       </button>
+ *     </form>
+ *   );
+ * }
+ * ```
+ * 
+ * @see https://firebase.google.com/docs/auth
+ * @module hooks/useAuth
  */
 
 import { useState, useEffect } from 'react';

@@ -1,8 +1,16 @@
 /**
- * Authentication Context for CollaboList
+ * @file src/contexts/AuthContext.tsx
+ * @description Authentication Context for CollaboList
  * 
  * This file provides a React context for managing authentication state and methods
- * throughout the application. It wraps Firebase authentication with a more React-friendly API.
+ * throughout the application. It wraps Firebase authentication with a more React-friendly API,
+ * providing a clean interface for components to handle user authentication.
+ * 
+ * @author CollaboList Team
+ * @created 2025-06-07
+ * @lastModified 2025-06-07
+ * 
+ * @dependencies react, firebase/auth, @/lib/firebase, @/services/userServices, @/types/user
  */
 
 // Core React imports
@@ -18,7 +26,11 @@ import {
   signInWithPopup,                                      // For social auth popups
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,  // Password reset
   onAuthStateChanged,                                   // Auth state listener
-  User as FirebaseAuthUser                             // Firebase Auth User type
+  User as FirebaseAuthUser,                            // Firebase Auth User type
+  EmailAuthProvider,                                    // For email/password auth
+  reauthenticateWithCredential,                         // For re-authentication
+  updateEmail as firebaseUpdateEmail,                   // For updating email
+  updateProfile as firebaseUpdateProfile                // For updating profile
 } from 'firebase/auth';
 
 // Our Firebase configuration and utilities
@@ -36,6 +48,21 @@ import { User, UserInput, UserUpdate } from '../types/user';
 /**
  * Extended Error interface that includes an optional code property
  * This is commonly returned by Firebase Auth errors
+ * 
+ * @interface AuthErrorWithCode
+ * @extends {Error}
+ * 
+ * @property {string} [code] - Optional error code (e.g., 'auth/user-not-found')
+ * @property {string} message - Human-readable error message
+ * 
+ * @example
+ * try {
+ *   // Auth operation that might fail
+ * } catch (error) {
+ *   if ((error as AuthErrorWithCode).code === 'auth/user-not-found') {
+ *     // Handle specific auth error
+ *   }
+ * }
  */
 interface AuthErrorWithCode extends Error {
   code?: string;
@@ -43,9 +70,31 @@ interface AuthErrorWithCode extends Error {
 }
 
 /**
- * The shape of our authentication context
- * This defines what values and methods are available to components
- * that consume the auth context
+ * Defines the shape of the authentication context that will be available
+ * to components that consume the AuthContext.
+ * 
+ * @interface AuthContextType
+ * 
+ * @property {FirebaseUser | null} user - The currently authenticated user or null if not authenticated
+ * @property {boolean} loading - Indicates if authentication state is being determined
+ * @property {boolean} isAuthenticated - Convenience boolean indicating if a user is authenticated
+ * @property {(email: string, password: string) => Promise<void>} signIn - Method to sign in with email/password
+ * @property {(email: string, password: string, userData: UserInput) => Promise<void>} signUp - Method to create a new user account
+ * @property {() => Promise<void>} signOut - Method to sign out the current user
+ * @property {() => Promise<void>} signInWithGoogle - Method to sign in with Google
+ * @property {() => Promise<void>} signInWithApple - Method to sign in with Apple (on supported devices)
+ * @property {(email: string) => Promise<void>} sendPasswordResetEmail - Method to send a password reset email
+ * @property {(updates: UserUpdate) => Promise<void>} updateUserProfile - Method to update the current user's profile
+ * 
+ * @example
+ * // Usage in a component:
+ * const { user, isAuthenticated, signIn, signOut } = useAuthContext();
+ * 
+ * if (isAuthenticated) {
+ *   return <div>Welcome, {user?.email}!</div>;
+ * }
+ * 
+ * return <button onClick={() => signIn('user@example.com', 'password')}>Sign In</button>;
  */
 interface AuthContextType {
   // Current authenticated user or null if not authenticated
@@ -53,6 +102,9 @@ interface AuthContextType {
   
   // Loading state for auth operations
   loading: boolean;
+  
+  // Update user's email address
+  updateEmail: (newEmail: string, password: string) => Promise<void>;
   
   // Any authentication error that occurred
   error: { code: string; message: string } | null;
@@ -69,8 +121,21 @@ interface AuthContextType {
 }
 
 /**
- * Create the authentication context with an undefined default value
- * This will be populated by the AuthProvider component
+ * React Context for authentication state and methods
+ * 
+ * This context provides access to authentication state and methods throughout the application.
+ * It should be provided at the root of the application to make authentication state available
+ * to all child components that need it.
+ * 
+ * @example
+ * // In your app's root component:
+ * function App() {
+ *   return (
+ *     <AuthProvider>
+ *       <YourAppComponents />
+ *     </AuthProvider>
+ *   );
+ * }
  */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -80,7 +145,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  * This component provides authentication context to the entire application.
  * It manages user authentication state and provides authentication methods.
  * 
- * @param children - Child components that will have access to the auth context
+ * @component
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components that will have access to the auth context
+ * 
+ * @example
+ * // Basic usage in your app:
+ * <AuthProvider>
+ *   <App />
+ * </AuthProvider>
+ * 
+ * @returns {JSX.Element} The AuthProvider component with authentication context
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   // State for the authenticated user and loading state
@@ -242,17 +317,145 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const signOut = async (): Promise<void> => {
     try {
-      setError(null);
+      setLoading(true);
       await firebaseSignOut(auth);
-      console.log('User signed out successfully');
-    } catch (err) {
-      const error = err as AuthErrorWithCode;
-      console.error('Sign out error:', error);
+      setUser(null);
+      setError(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
       setError({
-        code: error.code || 'auth/error',
-        message: error.message || 'Failed to sign out'
+        code: 'auth/sign-out-failed',
+        message: 'Failed to sign out. Please try again.'
       });
-      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Cleans up user data to ensure it matches the User type
+   * Converts null values to undefined for optional fields
+   */
+  const cleanUserData = (data: Partial<User> | UserUpdate): Partial<User> => {
+    const result: Partial<User> = {};
+    
+    // Only include defined values and convert null to undefined
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        result[key as keyof User] = value as any;
+      }
+    });
+    
+    return result;
+  };
+
+  // Update user profile information
+  const updateUserProfile = async (updates: UserUpdate): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!auth.currentUser) {
+        throw new Error('No authenticated user found');
+      }
+      
+      // Update Firebase Auth profile if displayName or photoURL is being updated
+      if (updates.displayName !== undefined || updates.photoURL !== undefined) {
+        await firebaseUpdateProfile(auth.currentUser, {
+          displayName: updates.displayName,
+          photoURL: updates.photoURL || undefined
+        });
+      }
+      
+      // Update user in Firestore
+      if (user) {
+        const updateData: UserUpdate = {
+          ...updates,
+          updatedAt: new Date().toISOString()
+        };
+        
+        await userServices.updateUser(user.id, updateData);
+        
+        // Clean and update local user state
+        const updatedUser: User = {
+          ...user,
+          ...cleanUserData(updateData)
+        } as User;
+        
+        setUser(updatedUser);
+      }
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      const errorCode = (error as AuthErrorWithCode).code || 'auth/update-profile-failed';
+      const errorMessage = (error as Error).message || 'Failed to update profile';
+      
+      setError({
+        code: errorCode,
+        message: errorMessage
+      });
+      
+      return Promise.reject(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update user's email address
+  const updateEmail = async (newEmail: string, password: string): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const currentUser = auth.currentUser;
+      if (!currentUser || !currentUser.email) {
+        throw new Error('No authenticated user found');
+      }
+      
+      // Re-authenticate the user
+      const credential = EmailAuthProvider.credential(
+        currentUser.email,
+        password
+      );
+      
+      await reauthenticateWithCredential(currentUser, credential);
+      
+      // Update the email in Firebase Auth
+      await firebaseUpdateEmail(currentUser, newEmail);
+      
+      // Update the user in Firestore
+      if (user) {
+        const updates: UserUpdate = {
+          email: newEmail,
+          updatedAt: new Date().toISOString()
+        };
+        
+        await userServices.updateUser(user.id, updates);
+        
+        // Clean and update local user state
+        const updatedUser: User = {
+          ...user,
+          ...cleanUserData(updates)
+        } as User;
+        
+        setUser(updatedUser);
+      }
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error updating email:', error);
+      const errorCode = (error as AuthErrorWithCode).code || 'auth/update-email-failed';
+      const errorMessage = (error as Error).message || 'Failed to update email address';
+      
+      setError({
+        code: errorCode,
+        message: errorMessage
+      });
+      
+      return Promise.reject(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -473,12 +676,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     signUp,
     signIn,
+    signOut,
     signInWithGoogle,
     signInWithApple,
     isAppleSignInAvailable: isIosOrSafari(),
     sendPasswordResetEmail,
-    signOut,
-    isInitialized,
+    updateUserProfile: updateUserProfile || (async () => {
+      console.warn('updateUserProfile not implemented');
+    }),
+    updateEmail,
+    isInitialized
   };
 
   return (
@@ -490,12 +697,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 /**
  * Custom hook to access the authentication context
- * @returns {AuthContextType} The authentication context
+ * 
+ * This hook provides access to the authentication context values and methods.
+ * It must be used within a component that is a descendant of an AuthProvider.
+ * 
+ * @returns {AuthContextType} The authentication context value
+ * 
  * @throws {Error} If used outside of an AuthProvider
  * 
  * @example
- * const { user, signIn, signOut } = useAuthContext();
+ * // In a component:
+ * function UserProfile() {
+ *   const { user, signOut } = useAuthContext();
+ *   
+ *   return (
+ *     <div>
+ *       <p>Welcome, {user?.displayName || 'User'}</p>
+ *       <button onClick={signOut}>Sign Out</button>
+ *     </div>
+ *   );
+ * }
  */
+// Export the hook with two names for backward compatibility
+// Export the hook with two names for backward compatibility
 export const useAuthContext = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -503,3 +727,6 @@ export const useAuthContext = (): AuthContextType => {
   }
   return context;
 };
+
+// Alias for useAuthContext for backward compatibility
+export const useAuth = useAuthContext;

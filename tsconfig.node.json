@@ -1,3 +1,16 @@
+/**
+ * @file tsconfig.node.json
+ * @description TypeScript configuration for Node.js specific files in the project
+ * 
+ * This configuration file is used by TypeScript to provide type checking and compilation
+ * settings specifically for Node.js related files, such as Vite configuration.
+ * It's separate from the main tsconfig.json to handle different module systems
+ * and environments between browser and Node.js code.
+ * 
+ * @see https://vitejs.dev/guide/features.html#typescript
+ * @see https://www.typescriptlang.org/tsconfig
+ */
+
 {
   "compilerOptions": {
     "composite": true,

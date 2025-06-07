@@ -1,5 +1,22 @@
+/**
+ * @file jest.config.ts
+ * @description Jest configuration for testing React components with TypeScript
+ * 
+ * This file configures Jest to work with TypeScript, React, and other tools
+ * in the project. It sets up the test environment, coverage settings, and
+ * module resolution.
+ * 
+ * @see https://jestjs.io/docs/configuration
+ * @see https://kulshekhar.github.io/ts-jest/docs/getting-started/presets
+ */
+
 import type { Config } from '@jest/types';
 
+/**
+ * Jest configuration object
+ * 
+ * @type {import('@jest/types').Config.InitialOptions}
+ */
 const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',

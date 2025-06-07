@@ -1,22 +1,61 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# Top-most configuration file
 root = true
 
+# ================================================
+# Default Configuration
+# ================================================
 [*]
+# Character encoding
 charset = utf-8
-end_of_line = lf
-indent_size = 2
-indent_style = space
-insert_final_newline = true
-max_line_length = 100
-trim_trailing_whitespace = true
 
+# Line endings (use LF for cross-platform compatibility)
+end_of_line = lf
+
+# Indentation
+indent_style = space
+indent_size = 2
+
+# File Formatting
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 100
+
+# ================================================
+# Language-Specific Configurations
+# ================================================
+
+# JavaScript/TypeScript/React
 [*.{js,jsx,ts,tsx}]
+# Use single quotes for consistency
 quote_type = single
 
-[*.{json,md}]
+# JSON and Markdown
+[*.{json,md,yml,yaml}]
 indent_size = 2
 
+# Markdown specific
 [*.md]
+# Allow trailing spaces in markdown for line breaks
 trim_trailing_whitespace = false
 
+# Makefiles require tabs
 [Makefile]
 indent_style = tab
+
+# HTML
+[*.{html,htm}]
+indent_size = 2
+
+# CSS/SCSS/LESS
+[*.{css,scss,less}]
+indent_size = 2
+
+# ================================================
+# Project-Specific Overrides
+# ================================================
+
+# Example: If you have a specific directory with different settings
+# [src/legacy/**]
+# indent_size = 4

@@ -1,8 +1,37 @@
 /**
- * SignUp Component
+ * @file src/components/auth/SignUp.tsx
+ * @description User Registration Component
  * 
- * Handles user registration with email, password, and display name.
- * Integrates with Firebase Authentication and Firestore for user management.
+ * A comprehensive sign-up form that handles new user registration with email/password
+ * and creates corresponding user documents in Firestore. This component manages the
+ * complete user registration flow including form validation, error handling, and
+ * integration with Firebase Authentication and Firestore.
+ * 
+ * ## Features
+ * - Email and password registration
+ * - Display name collection
+ * - Form validation with helpful error messages
+ * - Loading states during registration
+ * - Error handling and user feedback
+ * - Automatic redirection after successful registration
+ * - Mobile-responsive design
+ * 
+ * ## Registration Flow
+ * 1. User fills out the registration form
+ * 2. Form data is validated
+ * 3. Firebase Authentication creates a new user account
+ * 4. User document is created in Firestore
+ * 5. User is redirected to the dashboard
+ * 
+ * ## Dependencies
+ * - `react-router-dom` for navigation
+ * - `AuthContext` for authentication state and methods
+ * - `userServices` for Firestore operations
+ * - Firebase Authentication and Firestore
+ * 
+ * @see https://firebase.google.com/docs/auth
+ * @see https://firebase.google.com/docs/firestore
+ * @module components/auth/SignUp
  * 
  * @component
  * @returns {JSX.Element} The sign-up form component
@@ -48,15 +77,16 @@ const SignUp: React.FC = () => {
       await signUp(email, password);
       
       // 2. Create user document in Firestore
-      const user: User = {
+      const userData = {
         id: email, // Using email as ID for simplicity
         email,
+        password, // Include the password as required by UserInput
         displayName: displayName || email.split('@')[0],
         createdAt: new Date(),
         updatedAt: new Date()
       };
       
-      await userServices.createUser(user);
+      await userServices.createUser(userData);
       
       // 3. Redirect to dashboard on success
       navigate('/dashboard');

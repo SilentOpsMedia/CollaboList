@@ -1,8 +1,17 @@
 /**
- * Main Entry Point
+ * @file src/main.tsx
+ * @description Main entry point of the CollaboList application
  * 
- * This is the entry point of the React application.
- * It sets up the React application with necessary providers and renders the root component.
+ * This is the entry point of the React application. It performs the following tasks:
+ * 1. Imports necessary dependencies and components
+ * 2. Sets up the React application with necessary providers (Router, Auth, etc.)
+ * 3. Renders the root App component into the DOM
+ * 4. Initializes performance monitoring (if enabled)
+ * 
+ * @see https://reactjs.org/docs/react-dom-client.html#createroot
+ * @see https://reactrouter.com/web/guides/quick-start
+ * 
+ * @module main
  */
 
 // Core React imports

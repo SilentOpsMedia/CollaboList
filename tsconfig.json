@@ -1,3 +1,14 @@
+/**
+ * @file tsconfig.json
+ * @description TypeScript configuration for the CollaboList project
+ * 
+ * This file configures how TypeScript should compile the project's code.
+ * It includes compiler options, module resolution settings, and file inclusion/exclusion rules.
+ * 
+ * @see https://www.typescriptlang.org/tsconfig
+ * @see https://www.typescriptlang.org/tsconfig#compilerOptions
+ */
+
 {
   "compilerOptions": {
     "target": "es5",

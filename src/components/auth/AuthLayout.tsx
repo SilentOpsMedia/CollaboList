@@ -1,13 +1,46 @@
 /**
- * Authentication Layout Component
+ * @file src/components/auth/AuthLayout.tsx
+ * @description Authentication Layout Component
  * 
- * A layout wrapper for authentication-related pages (login, signup, etc.).
- * Handles redirection for authenticated users and provides a consistent layout.
+ * A reusable layout component that wraps authentication-related pages (login, signup, etc.).
+ * It provides a consistent UI structure and handles authentication state management.
+ * 
+ * ## Features
+ * - Redirects authenticated users to the dashboard
+ * - Shows a loading state while checking authentication status
+ * - Provides a consistent layout for all auth pages
+ * - Responsive design that works on all screen sizes
+ * 
+ * ## Usage
+ * ```tsx
+ * // In your routing configuration
+ * <Route path="/login" element={
+ *   <AuthLayout>
+ *     <LoginForm />
+ *   </AuthLayout>
+ * } />
+ * 
+ * <Route path="/signup" element={
+ *   <AuthLayout>
+ *     <SignUpForm />
+ *   </AuthLayout>
+ * } />
+ * ```
+ * 
+ * ## Authentication Flow
+ * 1. Checks if user is authenticated
+ * 2. If authenticated, redirects to `/dashboard`
+ * 3. If not authenticated, renders the child components
+ * 4. Shows loading state while checking auth status
  * 
  * @component
  * @param {Object} props - Component props
  * @param {React.ReactNode} props.children - Child components to be rendered within the layout
  * @returns {JSX.Element} The authentication layout with consistent styling
+ * 
+ * @see https://reactrouter.com/web/guides/quick-start
+ * @see https://tailwindcss.com/docs/installation
+ * @module components/auth/AuthLayout
  */
 
 import React from 'react';

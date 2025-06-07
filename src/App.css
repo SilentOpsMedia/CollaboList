@@ -1,8 +1,22 @@
 /**
- * Main Stylesheet for CollaboList Application
+ * @file src/App.css
+ * @description Global styles and design system for CollaboList
  * 
- * This file contains global styles and CSS custom properties (variables)
- * that are used throughout the application.
+ * This stylesheet contains all global styles, CSS custom properties (variables),
+ * and utility classes used throughout the application. It follows a modular
+ * approach with the following sections:
+ * 1. CSS Custom Properties (Design Tokens)
+ * 2. Base/Reset Styles
+ * 3. Typography
+ * 4. Layout & Components
+ * 5. Utility Classes
+ * 
+ * The design system uses CSS variables for consistent theming and easy
+ * customization. All colors, spacing, and typography should be defined
+ * as CSS variables in the :root selector.
+ * 
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties
+ * @see https://tailwindcss.com/docs/customizing-colors
  */
 
 /* Import Google Fonts */

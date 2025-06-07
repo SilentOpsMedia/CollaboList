@@ -1,8 +1,38 @@
 /**
- * Dashboard Component
+ * @file src/components/dashboard/Dashboard.tsx
+ * @description Main Application Dashboard
  * 
- * Main application dashboard that displays after successful authentication.
- * Shows user information and provides navigation to other parts of the app.
+ * The primary dashboard component that serves as the main interface after user authentication.
+ * It displays user information, provides navigation to different sections of the application,
+ * and handles the user session.
+ * 
+ * ## Features
+ * - Displays user profile information
+ * - Provides navigation to different app sections
+ * - Handles user authentication state
+ * - Responsive layout that works on all devices
+ * - Loading states for better UX
+ * 
+ * ## Authentication Flow
+ * 1. Checks if user is authenticated
+ * 2. Redirects to login if not authenticated
+ * 3. Shows loading state while checking auth status
+ * 4. Renders dashboard content when authenticated
+ * 
+ * ## Components
+ * - User profile section
+ * - Navigation menu
+ * - Sign out functionality
+ * - Responsive layout components
+ * 
+ * ## Dependencies
+ * - `react-router-dom` for navigation
+ * - `AuthContext` for authentication state
+ * - Tailwind CSS for styling
+ * 
+ * @see https://reactrouter.com/
+ * @see https://tailwindcss.com/
+ * @module components/dashboard/Dashboard
  * 
  * @component
  * @returns {JSX.Element | null} The dashboard component or null if redirecting

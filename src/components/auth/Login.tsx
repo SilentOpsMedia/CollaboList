@@ -1,103 +1,266 @@
-// Import necessary dependencies
-// React - Core library for building user interfaces
-// useState - Hook for managing component state
+/**
+ * @file src/components/auth/Login.tsx
+ * @description User Authentication: Login Component
+ * 
+ * A comprehensive login component that handles user authentication through multiple methods:
+ * - Email/Password authentication
+ * - Social login (Google, Apple)
+ * - Password reset functionality
+ * 
+ * ## Features
+ * - Responsive login form with validation
+ * - Social authentication providers (Google, Apple)
+ * - Forgot password flow with email verification
+ * - Form validation with helpful error messages
+ * - Loading states during authentication
+ * - Error handling and user feedback
+ * - Keyboard navigation support
+ * - Mobile-responsive design
+ * 
+ * ## State Management
+ * - Manages form state with React hooks
+ * - Tracks form validation errors
+ * - Handles loading states during authentication
+ * - Manages password reset flow
+ * 
+ * ## Dependencies
+ * - `react-router-dom` for navigation
+ * - `@headlessui/react` for accessible UI components
+ * - `react-icons` for social provider icons
+ * - Custom `AuthContext` for authentication state
+ * 
+ * @see https://firebase.google.com/docs/auth
+ * @see https://reactrouter.com/
+ * @see https://headlessui.com/
+ * @module components/auth/Login
+ * 
+ * @author CollaboList Team
+ * @created 2025-06-07
+ * @lastModified 2025-06-07
+ */
+
 import React, { useState } from 'react';
-// useNavigate - Hook for programmatic navigation
 import { useNavigate } from 'react-router-dom';
-// Custom hook for authentication context
 import { useAuthContext } from '../../contexts/AuthContext';
-// Icons from react-icons library
-import { FcGoogle } from 'react-icons/fc'; // Google icon
-import { FaApple } from 'react-icons/fa'; // Apple icon
-// UI components for modal dialog
+import { FcGoogle } from 'react-icons/fc';
+import { FaApple } from 'react-icons/fa';
 import { Dialog, Transition } from '@headlessui/react';
-// Close icon from Heroicons
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
-// Main Login component
+/**
+ * Login Component
+ * 
+ * Handles user authentication through email/password and social providers.
+ * Manages form state, validation, and authentication flow.
+ * 
+ * @component
+ * @example
+ * // Basic usage
+ * <Login />
+ * 
+ * @returns {JSX.Element} The rendered login form with authentication options
+ */
 export default function Login() {
-  // Hook for programmatic navigation
+  /**
+   * Hook for programmatic navigation
+   * @type {ReturnType<typeof useNavigate>}
+   */
   const navigate = useNavigate();
   
-  // Destructure authentication methods and state from AuthContext
+  /**
+   * Authentication context with user state and authentication methods
+   * @type {Object}
+   * @property {Function} signIn - Function to sign in with email/password
+   * @property {Function} signInWithGoogle - Function to sign in with Google
+   * @property {Function} signInWithApple - Function to sign in with Apple
+   * @property {Function} sendPasswordResetEmail - Sends a password reset email
+   * @property {boolean} isAppleSignInAvailable - Whether Apple sign-in is available
+   * @property {Error | null} error - Authentication error, if any
+   * @property {boolean} loading - Whether authentication is in progress
+   */
   const { 
-    signIn,                    // Function to sign in with email/password
-    signInWithGoogle,          // Function to sign in with Google
-    signInWithApple,           // Function to sign in with Apple
-    sendPasswordResetEmail,    // Function to send password reset email
-    isAppleSignInAvailable,    // Boolean indicating if Apple sign-in is available
-    error,                    // Error object from authentication
-    loading                   // Loading state from authentication
+    signIn,
+    signInWithGoogle,
+    signInWithApple,
+    sendPasswordResetEmail,
+    isAppleSignInAvailable,
+    error,
+    loading
   } = useAuthContext();
   
-  // State variables for the component
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false); // Controls forgot password modal visibility
-  const [resetEmail, setResetEmail] = useState(''); // Email input for password reset
-  const [resetStatus, setResetStatus] = useState<{success?: boolean; message?: string}>({}); // Status of password reset request
-  const [isResetting, setIsResetting] = useState(false); // Loading state for password reset
-  const [email, setEmail] = useState(''); // Email input for login
-  const [password, setPassword] = useState(''); // Password input for login
-  const [isLoading, setIsLoading] = useState(false); // Loading state for login
-  const [formError, setFormError] = useState<string | null>(null); // Error message for form validation
+  /**
+   * State for controlling the visibility of the forgot password modal
+   * @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]}
+   */
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  
+  /**
+   * State for the email input in the password reset form
+   * @type {[string, React.Dispatch<React.SetStateAction<string>>]}
+   */
+  const [resetEmail, setResetEmail] = useState('');
+  
+  /**
+   * State for tracking the status of the password reset request
+   * @type {[Object, React.Dispatch<React.SetStateAction<Object>>]}
+   */
+  const [resetStatus, setResetStatus] = useState<{success?: boolean; message?: string}>({});
+  
+  /**
+   * State for the loading state during password reset
+   * @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]}
+   */
+  const [isResetting, setIsResetting] = useState(false);
+  
+  /**
+   * State for the email input in the login form
+   * @type {[string, React.Dispatch<React.SetStateAction<string>>]}
+   */
+  const [email, setEmail] = useState('');
+  
+  /**
+   * State for the password input in the login form
+   * @type {[string, React.Dispatch<React.SetStateAction<string>>]}
+   */
+  const [password, setPassword] = useState('');
+  
+  /**
+   * State for the loading state during login
+   * @type {[boolean, React.Dispatch<React.SetStateAction<boolean>>]}
+   */
+  const [isLoading, setIsLoading] = useState(false);
+  
+  /**
+   * State for form validation errors
+   * @type {[string | null, React.Dispatch<React.SetStateAction<string | null>>]}
+   */
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Handle form submission for email/password login
+  /**
+   * Handles the form submission for email/password login
+   * 
+   * @async
+   * @function handleSubmit
+   * @param {React.FormEvent} e - The form submission event
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * // In a form's onSubmit handler:
+   * // ```tsx
+   * // <form onSubmit={handleSubmit}>
+   */
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
-    setFormError(null); // Clear any previous errors
+    e.preventDefault();
+    setFormError(null);
     
     // Basic form validation
     if (!email || !password) {
       setFormError('Please enter both email and password');
       return;
     }
-
-    setIsLoading(true); // Show loading state
+    
+    setIsLoading(true);
     
     try {
-      // Attempt to sign in with email and password
       await signIn(email, password);
-      // If successful, redirect to dashboard
       navigate('/dashboard');
-    } catch (err: any) {
-      // Handle any errors
-      console.error('Login error:', err);
-      setFormError(error?.message || 'Failed to sign in. Please try again.');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in. Please try again.';
+      setFormError(errorMessage);
     } finally {
-      // Always reset loading state
       setIsLoading(false);
     }
   };
 
-  // Handle password reset request
-  const handlePasswordReset = async () => {
-    // Validate email input
+  /**
+   * Handles social login authentication (Google or Apple)
+   * 
+   * @async
+   * @function handleSocialLogin
+   * @param {'google' | 'apple'} provider - The social provider to use for authentication
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * // In a button's onClick handler:
+   * // <button onClick={() => handleSocialLogin('google')}>
+   * //   <FcGoogle /> Sign in with Google
+   * // </button>
+   * 
+   * @throws {Error} If authentication with the provider fails
+   */
+  const handleSocialLogin = async (provider: 'google' | 'apple') => {
+    try {
+      setIsLoading(true);
+      
+      if (provider === 'google') {
+        await signInWithGoogle();
+      } else if (provider === 'apple') {
+        await signInWithApple();
+      }
+      
+      navigate('/dashboard');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to sign in with ${provider}`;
+      setFormError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handles the password reset request when a user forgets their password
+   * 
+   * @async
+   * @function handleForgotPassword
+   * @param {React.FormEvent} e - The form submission event
+   * @returns {Promise<void>}
+   * 
+   * @example
+   * // In a form's onSubmit handler:
+   * // <form onSubmit={handleForgotPassword}>
+   * //   <input 
+   * //     type="email" 
+   * //     value={resetEmail} 
+   * //     onChange={(e) => setResetEmail(e.target.value)} 
+   * //     placeholder="Enter your email"
+   * //   />
+   * //   <button type="submit" disabled={isResetting}>
+   * //     {isResetting ? 'Sending...' : 'Reset Password'}
+   * //   </button>
+   * // </form>
+   */
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
     if (!resetEmail) {
       setResetStatus({ success: false, message: 'Please enter your email address' });
       return;
     }
     
-    // Set loading state and clear previous status
     setIsResetting(true);
     setResetStatus({});
     
     try {
-      // Attempt to send password reset email
       await sendPasswordResetEmail(resetEmail);
-      // On success, show success message and clear email field
       setResetStatus({ 
         success: true, 
-        message: 'Password reset email sent! Please check your inbox.' 
+        message: 'Password reset email sent. Please check your inbox.' 
       });
       setResetEmail('');
     } catch (error) {
-      // Handle any errors
-      console.error('Password reset error:', error);
-      setResetStatus({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Failed to send reset email. Please try again.' 
-      });
+      if (error instanceof Error) {
+        setResetStatus({ 
+          success: false, 
+          message: error.message
+        });
+      } else {
+        setResetStatus({ 
+          success: false, 
+          message: 'Failed to send reset email. Please try again.' 
+        });
+      }
     } finally {
-      // Always reset loading state
       setIsResetting(false);
     }
   };
@@ -376,9 +539,8 @@ export default function Login() {
                 {/* Submit button for password reset */}
                 <div className="mt-5 sm:mt-6">
                   <button
-                    type="button"
+                    type="submit"
                     disabled={isResetting}
-                    onClick={handlePasswordReset}
                     className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isResetting ? 'Sending...' : 'Send reset link'}

@@ -1,12 +1,28 @@
 /**
- * Web Vitals Reporting
+ * @file src/reportWebVitals.ts
+ * @description Web Vitals monitoring and reporting for performance metrics
  * 
- * This module provides functions to measure and report web vitals metrics.
- * Web Vitals is an initiative by Google to provide unified guidance for quality signals
- * that are essential to delivering a great user experience on the web.
+ * This module provides functionality to measure and report Core Web Vitals and other
+ * performance metrics. It's part of Google's Web Vitals initiative to standardize
+ * the measurement of user experience on the web.
+ * 
+ * The following metrics are tracked:
+ * - CLS (Cumulative Layout Shift): Measures visual stability
+ * - FID (First Input Delay): Measures interactivity
+ * - FCP (First Contentful Paint): Measures loading performance
+ * - LCP (Largest Contentful Paint): Measures loading performance
+ * - TTFB (Time to First Byte): Measures server response time
+ * 
+ * @see https://web.dev/vitals/
+ * @see https://github.com/GoogleChrome/web-vitals
+ * 
+ * @module reportWebVitals
  */
 
-import { ReportHandler } from 'web-vitals';
+// Import the web-vitals module with a different import style
+import * as webVitals from 'web-vitals';
+
+type ReportHandler = (metric: webVitals.Metric) => void;
 
 /**
  * Reports web vitals metrics using the provided handler function
@@ -14,20 +30,20 @@ import { ReportHandler } from 'web-vitals';
  */
 const reportWebVitals = (onPerfEntry?: ReportHandler): void => {
   if (onPerfEntry && onPerfEntry instanceof Function) {
-    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+    try {
       // Cumulative Layout Shift (CLS)
-      getCLS(onPerfEntry);
+      webVitals.onCLS(onPerfEntry);
       // First Input Delay (FID)
-      getFID(onPerfEntry);
+      webVitals.onFID(onPerfEntry);
       // First Contentful Paint (FCP)
-      getFCP(onPerfEntry);
+      webVitals.onFCP(onPerfEntry);
       // Largest Contentful Paint (LCP)
-      getLCP(onPerfEntry);
+      webVitals.onLCP(onPerfEntry);
       // Time to First Byte (TTFB)
-      getTTFB(onPerfEntry);
-    }).catch(error => {
-      console.error('Error loading web-vitals:', error);
-    });
+      webVitals.onTTFB(onPerfEntry);
+    } catch (error) {
+      console.error('Error in web-vitals:', error);
+    }
   }
 };
 
