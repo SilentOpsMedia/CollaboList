@@ -30,7 +30,8 @@ import {
   EmailAuthProvider,                                    // For email/password auth
   reauthenticateWithCredential,                         // For re-authentication
   updateEmail as firebaseUpdateEmail,                   // For updating email
-  updateProfile as firebaseUpdateProfile                // For updating profile
+  updateProfile as firebaseUpdateProfile,               // For updating profile
+  updatePassword                                       // For updating password
 } from 'firebase/auth';
 
 // Our Firebase configuration and utilities
@@ -105,6 +106,9 @@ interface AuthContextType {
   
   // Update user's email address
   updateEmail: (newEmail: string, password: string) => Promise<void>;
+  
+  // Change user's password
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   
   // Any authentication error that occurred
   error: { code: string; message: string } | null;
@@ -403,59 +407,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Update user's email address
-  const updateEmail = async (newEmail: string, password: string): Promise<void> => {
+  const updateEmail = async (newEmail: string, password: string) => {
+    if (!auth.currentUser) {
+      throw new Error('No user is currently signed in');
+    }
+
     try {
-      setLoading(true);
-      setError(null);
-      
-      const currentUser = auth.currentUser;
-      if (!currentUser || !currentUser.email) {
-        throw new Error('No authenticated user found');
-      }
-      
-      // Re-authenticate the user
+      // Re-authenticate user before updating email
       const credential = EmailAuthProvider.credential(
-        currentUser.email,
+        auth.currentUser.email || '',
         password
       );
       
-      await reauthenticateWithCredential(currentUser, credential);
+      await reauthenticateWithCredential(auth.currentUser, credential);
       
-      // Update the email in Firebase Auth
-      await firebaseUpdateEmail(currentUser, newEmail);
+      // Update email in Firebase Auth
+      await firebaseUpdateEmail(auth.currentUser, newEmail);
       
-      // Update the user in Firestore
-      if (user) {
-        const updates: UserUpdate = {
-          email: newEmail,
-          updatedAt: new Date().toISOString()
-        };
-        
-        await userServices.updateUser(user.id, updates);
-        
-        // Clean and update local user state
-        const updatedUser: User = {
-          ...user,
-          ...cleanUserData(updates)
-        } as User;
-        
-        setUser(updatedUser);
+      // Update email in Firestore if user document exists
+      if (auth.currentUser.uid) {
+        await userServices.updateUser(auth.currentUser.uid, { email: newEmail });
       }
       
-      return Promise.resolve();
+      // Update local user state
+      setUser(prev => prev ? { ...prev, email: newEmail } : null);
+      
     } catch (error) {
       console.error('Error updating email:', error);
-      const errorCode = (error as AuthErrorWithCode).code || 'auth/update-email-failed';
-      const errorMessage = (error as Error).message || 'Failed to update email address';
+      throw error;
+    }
+  };
+
+  // Change user's password
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    if (!auth.currentUser?.email) {
+      throw new Error('No user is currently signed in');
+    }
+
+    try {
+      // Re-authenticate user before changing password
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email,
+        currentPassword
+      );
       
-      setError({
-        code: errorCode,
-        message: errorMessage
-      });
+      await reauthenticateWithCredential(auth.currentUser, credential);
       
-      return Promise.reject(error);
-    } finally {
-      setLoading(false);
+      // Update the password
+      await updatePassword(auth.currentUser, newPassword);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
     }
   };
 
@@ -541,9 +543,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             updateData.displayName = userCredential.displayName;
           }
           
-          if (Object.keys(updateData).length > 2) { // Only update if there are changes beyond the timestamps
-            await userServices.updateUser(userCredential.uid, updateData);
-          }
+          await userServices.updateUser(userCredential.uid, updateData);
         }
       }
     } catch (err) {
@@ -673,6 +673,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     loading: loading || !isInitialized,
+    updateEmail,
+    changePassword,
     error,
     signUp,
     signIn,
@@ -681,10 +683,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithApple,
     isAppleSignInAvailable: isIosOrSafari(),
     sendPasswordResetEmail,
-    updateUserProfile: updateUserProfile || (async () => {
-      console.warn('updateUserProfile not implemented');
-    }),
-    updateEmail,
+    updateUserProfile,
     isInitialized
   };
 
