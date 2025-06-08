@@ -35,11 +35,17 @@ jobs:
         env:
           CI: true
           
+      - name: Check for Codecov token
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && !secrets.CODECOV_TOKEN
+        run: |
+          echo "Warning: CODECOV_TOKEN secret not set. Skipping coverage upload."
+          exit 0
+        
       - name: Upload coverage to Codecov
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && secrets.CODECOV_TOKEN
         uses: codecov/codecov-action@v3
         with:
-          token: ${{ secrets.CODECOV_TOKEN || 'dummy-token' }}
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage/lcov.info
           fail_ci_if_error: false
 
@@ -48,7 +54,7 @@ jobs:
     needs: test
     timeout-minutes: 10
     # Only run on main and develop branches to prevent using up Cypress recordings
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && secrets.CYPRESS_RECORD_KEY
     
     steps:
       - uses: actions/checkout@v3
@@ -71,7 +77,15 @@ jobs:
           wait-on-timeout: 120
           browser: chrome
           headless: true
-          record: true
+          record: ${{ secrets.CYPRESS_RECORD_KEY != '' }}
         env:
-          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+          CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY || '' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Add any other required environment variables here
+          REACT_APP_FIREBASE_API_KEY: ${{ secrets.REACT_APP_FIREBASE_API_KEY }}
+          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}
+          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}
+          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}
+          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}
+          REACT_APP_FIREBASE_APP_ID: ${{ secrets.REACT_APP_FIREBASE_APP_ID }}
+          REACT_APP_FIREBASE_MEASUREMENT_ID: ${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID || '' }}

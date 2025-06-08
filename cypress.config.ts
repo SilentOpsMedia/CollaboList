@@ -16,7 +16,7 @@ export default defineConfig({
   },
   component: {
     devServer: {
-      framework: 'create-react-app',
+      framework: 'react',
       bundler: 'webpack',
     },
   },
