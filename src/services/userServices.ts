@@ -108,7 +108,7 @@ export const userServices = {
   },
 
   /**
-   * Updates an existing user document in Firestore
+   * Updates an existing user document in Firestore with only defined fields
    * @param {string} userId - The ID of the user to update
    * @param {UserUpdate} updates - The fields to update
    * @throws {Error} If the user update fails
@@ -117,16 +117,25 @@ export const userServices = {
     try {
       const userRef = doc(db, 'users', userId);
       
-      // Create a new object with the updates, ensuring null values are handled correctly
+      // Create a clean update object with only defined values
       const updateData: Partial<User> = {
-        ...updates,
-        // Convert null values to undefined to match the User type
-        photoURL: updates.photoURL === null ? undefined : updates.photoURL,
-        deletedAt: updates.deletedAt === null ? undefined : updates.deletedAt,
-        updatedAt: new Date(),
+        updatedAt: new Date()
       };
       
-      await updateDoc(userRef, updateData);
+      // Only add defined fields to the update object
+      (Object.entries(updates) as [keyof UserUpdate, any][]).forEach(([key, value]) => {
+        // Skip undefined and null values (but keep false, 0, empty string, etc.)
+        if (value !== undefined && value !== null) {
+          updateData[key as keyof User] = value as any;
+        }
+      });
+      
+      // If no fields to update (except updatedAt), return early
+      if (Object.keys(updateData).length <= 1) {
+        return;
+      }
+      
+      await updateDoc(userRef, updateData as Record<string, any>);
     } catch (error) {
       console.error('Error updating user:', error);
       throw new Error('Failed to update user');

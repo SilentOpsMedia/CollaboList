@@ -1,19 +1,24 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Dashboard from '../components/dashboard/Dashboard';
+
+interface DashboardPageProps {
+  onSignOut: () => Promise<void>;
+}
 
 /**
  * Dashboard Page Component
  * 
- * A simple fallback dashboard page for testing.
+ * Wrapper component that renders the main Dashboard and handles authentication state.
  * 
  * @component
+ * @param {Object} props - Component props
+ * @param {Function} props.onSignOut - Function to handle sign out
  * @returns {JSX.Element} The DashboardPage component
  */
-const DashboardPage: React.FC = () => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ onSignOut }) => {
   const { user } = useAuth();
   
-  console.log('DashboardPage - User:', user);
-
   if (!user) {
     return (
       <div style={{ padding: '2rem' }}>
@@ -23,8 +28,8 @@ const DashboardPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '2rem' }}>
-      ✅ Logged in — Dashboard placeholder
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Dashboard onSignOut={onSignOut} />
     </div>
   );
 };
