@@ -32,6 +32,7 @@ const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
 const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
 const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage'));
+const ChecklistPage = React.lazy(() => import('./pages/ChecklistPage'));
 
 // Components
 const ProtectedRoute = React.lazy(() => import('./components/auth/ProtectedRoute'));
@@ -120,17 +121,43 @@ const App: React.FC = () => {
           
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <React.Suspense fallback={<div>Loading dashboard...</div>}>
+                  <div style={{ padding: '2rem', border: '2px solid red' }}>
+                    🚀 Dashboard route is working!
+                    <DashboardPage />
+                  </div>
+                </React.Suspense>
+              } 
+            />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/checklists" element={<ChecklistPage />} />
+            <Route path="/checklists/:id" element={<ChecklistPage />} />
             
-            {/* Add more protected routes here */}
-            
-            {/* Default protected route */}
+            {/* Redirect root to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Catch-all route for protected paths */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
           
-          {/* Catch-all route */}
-          <Route path="*" element={<NotFoundPage />} />
+          {/* Public routes */}
+          <Route path="/" element={
+            <AuthLayout>
+              <LoginPage />
+            </AuthLayout>
+          }>
+            <Route index element={
+              <ProtectedRoute>
+                <Navigate to="/dashboard" replace />
+              </ProtectedRoute>
+            } />
+          </Route>
+          
+          {/* Catch-all route for non-existent public paths */}
+          <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </React.Suspense>
       </AuthProvider>

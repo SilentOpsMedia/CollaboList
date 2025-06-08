@@ -35,8 +35,10 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-firebase-hooks": "5.1.1",
+    "react-hook-form": "7.57.0",
     "react-icons": "^5.5.0",
-    "react-router-dom": "^6.21.3"
+    "react-router-dom": "^6.21.3",
+    "yup": "1.6.1"
   },
   "jest": {
     "preset": "ts-jest",

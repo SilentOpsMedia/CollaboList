@@ -39,7 +39,10 @@ import {
   GoogleAuthProvider,  // Google authentication provider
   signInWithPopup,     // Popup-based sign-in method
   OAuthProvider,       // Base class for OAuth providers
-  AuthProvider         // Base type for all auth providers
+  AuthProvider,        // Base type for all auth providers
+  setPersistence,      // For setting auth state persistence
+  browserLocalPersistence, // For local persistence
+  signOut as firebaseSignOut // Firebase sign out function
 } from 'firebase/auth';
 
 // Firestore database service
@@ -81,7 +84,17 @@ const app = initializeApp(firebaseConfig);
  * These services are initialized once here and exported for use throughout the app.
  * This ensures we're using the same instance of each service everywhere.
  */
-const auth = getAuth(app);        // Authentication service
+const auth = getAuth(app);
+
+// Set persistence to LOCAL to persist auth state across page refreshes
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log('Auth state persistence set to LOCAL');
+  })
+  .catch((error) => {
+    console.error('Error setting auth persistence:', error);
+  });
+
 const db = getFirestore(app);     // Firestore database
 const storage = getStorage(app);  // Cloud Storage for files
 
@@ -148,15 +161,25 @@ const isIosOrSafari = (): boolean => {
   return isIos || isSafari;
 };
 
+// Sign out function that properly clears the auth state
+const signOut = async (): Promise<void> => {
+  try {
+    await firebaseSignOut(auth);
+    console.log('User signed out successfully');
+  } catch (error) {
+    console.error('Error signing out:', error);
+    throw error;
+  }
+};
+
 // Export all necessary Firebase services and utilities
 export { 
   auth,              // Firebase Authentication service
   db,                // Firestore database
-  storage,           // Cloud Storage
+  storage,           // Firebase Storage
   signInWithGoogle,  // Google sign-in function
-  googleProvider,    // Google auth provider
-  appleProvider,     // Apple auth provider
-  isIosOrSafari     // Device detection utility
+  isIosOrSafari,     // Utility function to detect iOS/Safari
+  signOut           // Sign out function
 };
 
 export default app;

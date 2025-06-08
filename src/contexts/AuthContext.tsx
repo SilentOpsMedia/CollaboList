@@ -17,13 +17,13 @@
 import React, { createContext, useContext, ReactNode, useEffect, useState } from 'react';
 
 // Firebase Auth imports with specific methods we'll use
-import { 
+import {
   User as FirebaseUser,              // Firebase User type
   createUserWithEmailAndPassword as firebaseCreateUser,  // Email sign-up
   signInWithEmailAndPassword as firebaseSignIn,          // Email sign-in
-  signOut as firebaseSignOut,                            // Sign out
   GoogleAuthProvider,                                   // Google auth provider
-  signInWithPopup,                                      // For social auth popups
+  OAuthProvider,                                       // For OAuth providers
+  signInWithPopup,                                     // For social auth popups
   sendPasswordResetEmail as firebaseSendPasswordResetEmail,  // Password reset
   onAuthStateChanged,                                   // Auth state listener
   User as FirebaseAuthUser,                            // Firebase Auth User type
@@ -31,16 +31,24 @@ import {
   reauthenticateWithCredential,                         // For re-authentication
   updateEmail as firebaseUpdateEmail,                   // For updating email
   updateProfile as firebaseUpdateProfile,               // For updating profile
-  updatePassword                                       // For updating password
+  updatePassword,                                      // For updating password
+  sendEmailVerification as firebaseSendEmailVerification // For sending email verification
 } from 'firebase/auth';
 
 // Our Firebase configuration and utilities
-import { 
+import {
   auth,
-  googleProvider,
-  appleProvider, 
-  isIosOrSafari 
+  auth as firebaseAuth,
+  isIosOrSafari
 } from '../lib/firebase';
+
+// Initialize auth providers
+const googleProvider = new GoogleAuthProvider();
+const appleProvider = new OAuthProvider('apple.com');
+
+// Configure providers
+appleProvider.addScope('email');
+appleProvider.addScope('name');
 
 // Service for user-related operations
 import { userServices } from '../services/userServices';
@@ -100,25 +108,25 @@ interface AuthErrorWithCode extends Error {
 export interface AuthContextType {
   // Current authenticated user or null if not authenticated
   user: User | null;
-  
+
   // Loading state for auth operations
   loading: boolean;
-  
+
   // Update user's email address
   updateEmail: (newEmail: string, password: string) => Promise<void>;
-  
+
   // Change user's password
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  
+
   // Send email verification to the current user
   sendEmailVerification: () => Promise<void>;
-  
+
   // Check if email is verified
   isEmailVerified: boolean;
-  
+
   // Any authentication error that occurred
   error: { code: string; message: string } | null;
-  
+
   // Authentication methods
   signUp: (email: string, password: string) => Promise<void>;  // Create new account
   signIn: (email: string, password: string) => Promise<void>;  // Sign in with email
@@ -181,62 +189,89 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * This runs once when the component mounts and cleans up when it unmounts
    */
   useEffect(() => {
-    // Set up auth state listener when component mounts
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseAuthUser | null) => {
-      // User is signed in or out
-      if (firebaseUser) {
-        // Map Firebase user to our User type
-        const mappedUser: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          ...(firebaseUser.photoURL && { photoURL: firebaseUser.photoURL }),
-          isActive: true,
-          role: 'user',
-          metadata: {
-            lastLogin: new Date(),
-            failedLoginAttempts: 0,
-            preferences: {
-              theme: 'system',
-              notifications: {
-                email: true,
-                push: true
-              }
-            }
-          },
-          // Add any other required fields from your User type
-          emailVerified: firebaseUser.emailVerified || false,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        setUser(mappedUser);
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-      setIsInitialized(true);
-    },
-    // Error handler - wrapped in a try-catch to handle any errors
-    (error: unknown) => {
-      console.error('Auth state error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      const errorCode = (error as { code?: string }).code || 'auth/error';
-      
-      setError({ 
-        code: errorCode, 
-        message: errorMessage 
-      });
-      setLoading(false);
-      setIsInitialized(true);
-    }
-  );
+    console.log('AuthContext: Setting up auth state listener');
+    const unsubscribe = onAuthStateChanged(
+      firebaseAuth,
+      async (firebaseUser) => {
+        console.log('AuthContext: Auth state changed -', { 
+          hasUser: !!firebaseUser,
+          uid: firebaseUser?.uid,
+          email: firebaseUser?.email,
+          emailVerified: firebaseUser?.emailVerified
+        });
+        console.log('Auth state changed:', { 
+          hasUser: !!firebaseUser, 
+          uid: firebaseUser?.uid,
+          email: firebaseUser?.email,
+          emailVerified: firebaseUser?.emailVerified
+        });
+        
+        try {
+          if (firebaseUser) {
+            console.log('Auth state changed: User signed in');
+            
+            // Map Firebase user to our User type
+            const mappedUser: User = {
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              ...(firebaseUser.photoURL && { photoURL: firebaseUser.photoURL }),
+              isActive: true,
+              role: 'user',
+              metadata: {
+                lastLogin: new Date(),
+                failedLoginAttempts: 0,
+                preferences: {
+                  theme: 'system',
+                  notifications: {
+                    email: true,
+                    push: true
+                  }
+                }
+              },
+              emailVerified: firebaseUser.emailVerified || false,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            setUser(mappedUser);
+          } else {
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Error processing auth state:', error);
+          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+          const errorCode = (error as { code?: string }).code || 'auth/error';
+          
+          setError({
+            code: errorCode,
+            message: errorMessage
+          });
+        } finally {
+          setLoading(false);
+          setIsInitialized(true);
+        }
+      },
+      (error: unknown) => {
+        // This is the error callback for the auth state observer
+        console.error('Auth state observer error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        const errorCode = (error as { code?: string }).code || 'auth/error';
 
-  // Cleanup function to unsubscribe from auth state changes
-  return () => {
-    console.log('Cleaning up auth listener');
-    unsubscribe();
-  };
-}, []); // Empty dependency array means this effect runs once on mount
+        setError({
+          code: errorCode,
+          message: errorMessage
+        });
+        setLoading(false);
+        setIsInitialized(true);
+      }
+    );
+
+    // Cleanup function to unsubscribe from auth state changes
+    return () => {
+      console.log('Cleaning up auth listener');
+      unsubscribe();
+    };
+  }, []); // Empty dependency array means this effect runs once on mount
 
   /**
    * Signs up a new user with email and password
@@ -248,10 +283,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Create user in Firebase Authentication
-      const userCredential = await firebaseCreateUser(auth, email, password);
-      
+      const userCredential = await firebaseCreateUser(firebaseAuth, email, password);
+
       // Create corresponding user document in Firestore with only necessary fields
       // Prepare user data for Firestore
       const userData: UserInput & { id: string } = {
@@ -277,21 +312,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      
+
       // Create the user document in Firestore
       await userServices.createUser(userData);
-      
+
       console.log('User created successfully:', userCredential.user.uid);
     } catch (err) {
       // Handle and re-throw authentication errors
       const error = err as AuthErrorWithCode;
-      const errorMessage = error.code === 'auth/email-already-in-use' 
+      const errorMessage = error.code === 'auth/email-already-in-use'
         ? 'An account with this email already exists.'
         : 'Failed to create account. Please try again.';
-        
+
       console.error('Sign up error:', error);
-      setError({ 
-        code: error.code || 'auth/error', 
+      setError({
+        code: error.code || 'auth/error',
         message: errorMessage
       });
       throw new Error(errorMessage);
@@ -309,36 +344,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string): Promise<void> => {
     try {
       setError(null);
-      await firebaseSignIn(auth, email, password);
+      await firebaseSignIn(firebaseAuth, email, password);
       console.log('User signed in successfully');
     } catch (err) {
       const error = err as AuthErrorWithCode;
-      console.error('Sign in error:', error);
-      setError({ 
-        code: error.code || 'auth/error', 
-        message: error.message || 'Failed to sign in' 
+      console.error('Error signing in:', error);
+      setError({
+        code: error.code || 'auth/sign-in-failed',
+        message: error.message || 'Failed to sign in. Please check your credentials.'
       });
       throw error;
     }
   };
 
+
+
   /**
    * Signs out the current user
-   * @throws {AuthErrorWithCode} If sign out fails
+   * @throws {Error} If sign out fails
    */
   const signOut = async (): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
-      await firebaseSignOut(auth);
+      await firebaseAuth.signOut();
       setUser(null);
-      setError(null);
     } catch (error) {
       console.error('Error signing out:', error);
       setError({
-        code: 'auth/sign-out-failed',
+        code: (error as any).code || 'auth/sign-out-failed',
         message: 'Failed to sign out. Please try again.'
       });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -350,14 +387,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const cleanUserData = (data: Partial<User> | UserUpdate): Partial<User> => {
     const result: Partial<User> = {};
-    
+
     // Only include defined values and convert null to undefined
     Object.entries(data).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
         result[key as keyof User] = value as any;
       }
     });
-    
+
     return result;
   };
 
@@ -366,48 +403,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
-      if (!auth.currentUser) {
+
+      if (!firebaseAuth.currentUser) {
         throw new Error('No authenticated user found');
       }
-      
+
       // Update Firebase Auth profile if displayName or photoURL is being updated
       if (updates.displayName !== undefined || updates.photoURL !== undefined) {
-        await firebaseUpdateProfile(auth.currentUser, {
+        await firebaseUpdateProfile(firebaseAuth.currentUser, {
           displayName: updates.displayName,
           photoURL: updates.photoURL || undefined
         });
       }
-      
+
       // Update user in Firestore
       if (user) {
         const updateData: UserUpdate = {
           ...updates,
           updatedAt: new Date().toISOString()
         };
-        
+
         await userServices.updateUser(user.id, updateData);
-        
+
         // Clean and update local user state
         const updatedUser: User = {
           ...user,
           ...cleanUserData(updateData)
         } as User;
-        
+
         setUser(updatedUser);
       }
-      
+
       return Promise.resolve();
     } catch (error) {
       console.error('Error updating profile:', error);
       const errorCode = (error as AuthErrorWithCode).code || 'auth/update-profile-failed';
       const errorMessage = (error as Error).message || 'Failed to update profile';
-      
+
       setError({
         code: errorCode,
         message: errorMessage
       });
-      
+
       return Promise.reject(error);
     } finally {
       setLoading(false);
@@ -416,30 +453,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Update user's email address
   const updateEmail = async (newEmail: string, password: string) => {
-    if (!auth.currentUser) {
+    if (!firebaseAuth.currentUser) {
       throw new Error('No user is currently signed in');
     }
 
     try {
       // Re-authenticate user before updating email
       const credential = EmailAuthProvider.credential(
-        auth.currentUser.email || '',
+        firebaseAuth.currentUser.email || '',
         password
       );
-      
-      await reauthenticateWithCredential(auth.currentUser, credential);
-      
+
+      await reauthenticateWithCredential(firebaseAuth.currentUser, credential);
+
       // Update email in Firebase Auth
-      await firebaseUpdateEmail(auth.currentUser, newEmail);
-      
+      await firebaseUpdateEmail(firebaseAuth.currentUser, newEmail);
+
       // Update email in Firestore if user document exists
-      if (auth.currentUser.uid) {
-        await userServices.updateUser(auth.currentUser.uid, { email: newEmail });
+      if (firebaseAuth.currentUser.uid) {
+        await userServices.updateUser(firebaseAuth.currentUser.uid, { email: newEmail });
       }
-      
+
       // Update local user state
       setUser(prev => prev ? { ...prev, email: newEmail } : null);
-      
+
     } catch (error) {
       console.error('Error updating email:', error);
       throw error;
@@ -448,21 +485,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Change user's password
   const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
-    if (!auth.currentUser?.email) {
+    if (!firebaseAuth.currentUser?.email) {
       throw new Error('No user is currently signed in');
     }
 
     try {
       // Re-authenticate user before changing password
       const credential = EmailAuthProvider.credential(
-        auth.currentUser.email,
+        firebaseAuth.currentUser.email,
         currentPassword
       );
-      
-      await reauthenticateWithCredential(auth.currentUser, credential);
-      
+
+      await reauthenticateWithCredential(firebaseAuth.currentUser, credential);
+
       // Update the password
-      await updatePassword(auth.currentUser, newPassword);
+      await updatePassword(firebaseAuth.currentUser, newPassword);
     } catch (error) {
       console.error('Error changing password:', error);
       throw error;
@@ -478,15 +515,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setError(null);
       console.log('Initiating Google sign in...');
-      
+
       // Trigger Google sign-in popup
-      const result = await signInWithPopup(auth, googleProvider);
-      
+      const result = await signInWithPopup(firebaseAuth, googleProvider);
+
       // Create or update user in Firestore after successful authentication
       if (result?.user) {
         // Handle Google Sign In success
         const userCredential = result.user;
-        
+
         // Prepare user data for Firestore
         const userData: UserInput & { id: string } = {
           id: userCredential.uid,
@@ -508,10 +545,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         };
-        
+
         // Check if user document exists
         const userDoc = await userServices.getUser(userCredential.uid);
-        
+
         if (!userDoc) {
           // Create new user document if it doesn't exist
           const userData: UserInput & { id: string } = {
@@ -534,7 +571,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           };
-          
+
           await userServices.createUser(userData);
         } else {
           // Update last login time and other fields for existing user
@@ -542,24 +579,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'metadata.lastLogin': new Date(),
             updatedAt: new Date()
           };
-          
+
           if (userCredential.photoURL && userCredential.photoURL !== userDoc.photoURL) {
             updateData.photoURL = userCredential.photoURL;
           }
-          
+
           if (userCredential.displayName && userCredential.displayName !== userDoc.displayName) {
             updateData.displayName = userCredential.displayName;
           }
-          
+
           await userServices.updateUser(userCredential.uid, updateData);
         }
       }
     } catch (err) {
       const error = err as AuthErrorWithCode;
       console.error('Google sign in error:', error);
-      setError({ 
-        code: error.code || 'auth/error', 
-        message: error.message || 'Failed to sign in with Google' 
+      setError({
+        code: error.code || 'auth/error',
+        message: error.message || 'Failed to sign in with Google'
       });
       throw error;
     }
@@ -581,15 +618,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setError(null);
       console.log('Initiating Apple sign in...');
-      
+
       // Trigger Apple sign-in popup
       const result = await signInWithPopup(auth, appleProvider);
-      
+
       // Create or update user in Firestore after successful authentication
       if (result.user) {
         const userCredential = result.user;
         console.log('Apple sign in successful, updating user data...');
-        
+
         // Prepare user data for Firestore
         const userData: UserInput & { id: string } = {
           id: userCredential.uid,
@@ -614,10 +651,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        
+
         // Check if user document exists
         const userDoc = await userServices.getUser(userCredential.uid);
-        
+
         if (!userDoc) {
           // Create new user document if it doesn't exist
           await userServices.createUser(userData);
@@ -630,28 +667,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               lastLogin: new Date()
             }
           };
-          
+
           // Only update photoURL if it's different
           if (userCredential.photoURL && userCredential.photoURL !== userDoc.photoURL) {
             updateData.photoURL = userCredential.photoURL;
           }
-          
+
           // Only update displayName if it's different
           if (userCredential.displayName && userCredential.displayName !== userDoc.displayName) {
             updateData.displayName = userCredential.displayName;
           }
-          
+
           await userServices.updateUser(userCredential.uid, updateData);
         }
-        
+
         console.log('User data updated in Firestore');
       }
     } catch (err) {
       const error = err as AuthErrorWithCode;
       console.error('Apple sign in error:', error);
-      setError({ 
-        code: error.code || 'auth/error', 
-        message: error.message || 'Failed to sign in with Apple' 
+      setError({
+        code: error.code || 'auth/error',
+        message: error.message || 'Failed to sign in with Apple'
       });
       throw error;
     }
@@ -683,15 +720,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth.currentUser) {
       throw new Error('No user is currently signed in');
     }
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       // Import the specific function from firebase/auth
       const { sendEmailVerification: sendVerificationEmail } = await import('firebase/auth');
       await sendVerificationEmail(auth.currentUser);
-      
+
     } catch (error) {
       console.error('Error sending email verification:', error);
       setError({
@@ -703,7 +740,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
-  
+
   // Check if the current user's email is verified
   const isEmailVerified = user?.emailVerified || false;
 
@@ -720,15 +757,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Re-authenticate user before deletion
       const credential = EmailAuthProvider.credential(
         auth.currentUser.email,
         password
       );
-      
+
       await reauthenticateWithCredential(auth.currentUser, credential);
-      
+
       // Delete user document from Firestore if it exists
       if (auth.currentUser.uid) {
         try {
@@ -738,19 +775,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Continue with account deletion even if Firestore deletion fails
         }
       }
-      
+
       // Delete the user account
       await auth.currentUser.delete();
-      
+
       // Update local state
       setUser(null);
-      
+
     } catch (error) {
       console.error('Error deleting account:', error);
       const errorMessage = (error as Error).message || 'Failed to delete account';
-      setError({ 
-        code: (error as any).code || 'auth/account-deletion-failed', 
-        message: errorMessage 
+      setError({
+        code: (error as any).code || 'auth/account-deletion-failed',
+        message: errorMessage
       });
       throw error;
     } finally {

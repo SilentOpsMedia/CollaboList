@@ -19,10 +19,19 @@ interface ProtectedRouteProps {
  */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = (props) => {
   const { children, requireEmailVerification = false } = props;
-  const { user, loading } = useAuth();
+  const { user, loading, isInitialized } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  console.log('ProtectedRoute - Auth state:', { 
+    user: !!user, 
+    loading, 
+    isInitialized,
+    path: location.pathname,
+    requireEmailVerification,
+    emailVerified: user?.emailVerified
+  });
+
+  if (loading || !isInitialized) {
     return (
       <Box 
         display="flex" 
@@ -36,17 +45,31 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = (props) => {
   }
 
   if (!user) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to when they were redirected. This allows us to send them
-    // along to that page after they log in, which is a nicer user experience
-    // than dropping them off on the home page.
+    // If we're not yet initialized, show loading state
+    if (!isInitialized) {
+      return (
+        <Box 
+          display="flex" 
+          justifyContent="center" 
+          alignItems="center" 
+          minHeight="100vh"
+        >
+          <CircularProgress />
+        </Box>
+      );
+    }
+    
+    // Redirect to login with the current location to return to after login
+    console.log('ProtectedRoute: Redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requireEmailVerification && !user.emailVerified) {
+    console.log('ProtectedRoute: Email not verified, redirecting to verify-email');
     return <Navigate to="/verify-email" state={{ from: location }} replace />;
   }
 
+  console.log('ProtectedRoute: Rendering protected content');
   return <>{children}</>;
 };
 

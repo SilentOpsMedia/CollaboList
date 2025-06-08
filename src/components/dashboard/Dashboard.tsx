@@ -47,9 +47,14 @@ import { useAuthContext } from '../../contexts/AuthContext';
 // Types
 import { User } from '../../types/user';
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onSignOut: () => Promise<void>;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onSignOut }) => {
+  console.log("📍 Dashboard component mounted");
   const navigate = useNavigate();
-  const { user, signOut } = useAuthContext();
+  const { user } = useAuthContext();
 
   // Redirect to login if user is not authenticated
   useEffect(() => {
@@ -58,22 +63,12 @@ const Dashboard: React.FC = () => {
     }
   }, [user, navigate]);
 
-  /**
-   * Handles user sign out
-   * Signs out the user and redirects to the login page
-   */
-  const handleSignOut = async (): Promise<void> => {
-    try {
-      await signOut();
-      navigate('/login');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Consider showing a toast notification here
-    }
-  };
+  // Log user state for debugging
+  console.log('Dashboard - User state:', { user, hasUser: !!user });
 
   // Show loading state while checking authentication
   if (!user) {
+    console.log('Dashboard - No user, showing loading state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -100,7 +95,7 @@ const Dashboard: React.FC = () => {
             </div>
             <nav className="flex items-center space-x-4">
               <button
-                onClick={handleSignOut}
+                onClick={onSignOut}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                 aria-label="Sign out"
               >

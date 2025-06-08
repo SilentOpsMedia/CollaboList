@@ -33,7 +33,7 @@ const LoginPage: React.FC = () => {
       setError('');
       setLoading(true);
       await signIn(email, password);
-      navigate('/dashboard');
+      // ProtectedRoute will handle the redirection
     } catch (err) {
       console.error('Failed to sign in', err);
       setError('Failed to sign in. Please check your credentials.');
@@ -47,7 +47,7 @@ const LoginPage: React.FC = () => {
       setError('');
       setLoading(true);
       await signInWithGoogle();
-      navigate('/dashboard');
+      // ProtectedRoute will handle the redirection
     } catch (err) {
       console.error('Google sign in failed', err);
       setError('Failed to sign in with Google.');
@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
       setError('');
       setLoading(true);
       await signInWithApple();
-      navigate('/dashboard');
+      // ProtectedRoute will handle the redirection
     } catch (err) {
       console.error('Apple sign in failed', err);
       setError('Failed to sign in with Apple.');
