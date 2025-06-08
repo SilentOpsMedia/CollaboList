@@ -97,7 +97,7 @@ interface AuthErrorWithCode extends Error {
  * 
  * return <button onClick={() => signIn('user@example.com', 'password')}>Sign In</button>;
  */
-interface AuthContextType {
+export interface AuthContextType {
   // Current authenticated user or null if not authenticated
   user: User | null;
   
@@ -109,6 +109,12 @@ interface AuthContextType {
   
   // Change user's password
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  
+  // Send email verification to the current user
+  sendEmailVerification: () => Promise<void>;
+  
+  // Check if email is verified
+  isEmailVerified: boolean;
   
   // Any authentication error that occurred
   error: { code: string; message: string } | null;
@@ -322,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async (): Promise<void> => {
     try {
       setLoading(true);
+      setError(null);
       await firebaseSignOut(auth);
       setUser(null);
       setError(null);
@@ -670,11 +677,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Send email verification to the current user
+  const sendEmailVerification = async (): Promise<void> => {
+    if (!auth.currentUser) {
+      throw new Error('No user is currently signed in');
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Import the specific function from firebase/auth
+      const { sendEmailVerification: sendVerificationEmail } = await import('firebase/auth');
+      await sendVerificationEmail(auth.currentUser);
+      
+    } catch (error) {
+      console.error('Error sending email verification:', error);
+      setError({
+        code: (error as AuthErrorWithCode).code || 'auth/email-verification-failed',
+        message: (error as Error).message || 'Failed to send verification email. Please try again.'
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Check if the current user's email is verified
+  const isEmailVerified = user?.emailVerified || false;
+
   const value = {
     user,
     loading: loading || !isInitialized,
     updateEmail,
     changePassword,
+    sendEmailVerification,
+    isEmailVerified,
     error,
     signUp,
     signIn,
@@ -687,9 +725,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isInitialized
   };
 
+  // Show loading indicator while auth is initializing
+  if (!isInitialized) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        width: '100vw',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        zIndex: 9999
+      }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

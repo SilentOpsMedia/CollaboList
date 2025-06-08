@@ -7,10 +7,11 @@
  * - `/login`: Authentication page for existing users
  * - `/signup`: Registration page for new users
  * - `/dashboard`: Main application interface (protected route)
- * - `/`: Redirects to `/login` by default
+ * - `/settings`: User settings page (protected route)
+ * - `/`: Redirects to `/dashboard` if authenticated, otherwise to `/login`
  * 
- * The component wraps authentication-related routes in an `AuthLayout` for consistent styling
- * and applies global styles from `App.css`.
+ * The component uses `AuthLayout` for authentication pages and `ProtectedRoute` to protect
+ * routes that require authentication.
  * 
  * @see https://reactrouter.com/
  * @see https://reactjs.org/docs/typechecking-with-proptypes.html
@@ -19,70 +20,122 @@
  */
 
 import React from 'react';
-import './App.css';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { AuthProvider } from './contexts/AuthContext';
 
-// Layout and Page Components
-import AuthLayout from './components/auth/AuthLayout';
-import Login from './components/auth/Login';
-import SignUp from './components/auth/SignUp';
-import Dashboard from './components/dashboard/Dashboard';
-import SettingsPage from './pages/SettingsPage';
-import { useAuth } from './contexts/AuthContext';
+// Pages - Using dynamic imports with React.lazy for code splitting
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const SignupPage = React.lazy(() => import('./pages/SignupPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/ForgotPasswordPage'));
+const VerifyEmailPage = React.lazy(() => import('./pages/VerifyEmailPage'));
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return <div>Loading...</div>; // Or a loading spinner
-  }
-  
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return children ? <>{children}</> : <Outlet />;
-};
+// Components
+const ProtectedRoute = React.lazy(() => import('./components/auth/ProtectedRoute'));
+const AuthLayout = React.lazy(() => import('./components/auth/AuthLayout'));
+
+// Loading component for Suspense fallback
+const LoadingFallback: React.FC = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    width: '100vw',
+  }}>
+    <div>Loading...</div>
+  </div>
+);
+
+// Create a theme instance
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+    error: {
+      main: '#f44336',
+    },
+    background: {
+      default: '#f5f5f5',
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          borderRadius: 8,
+        },
+      },
+    },
+  },
+});
 
 /**
  * Main App Component
  * 
- * Sets up the application routing using React Router.
+ * Sets up the application routing using React Router and provides the theme and auth context.
  * Wraps authentication routes in AuthLayout for consistent styling.
  * 
  * @returns {JSX.Element} The root application component with routing configuration
  */
-const App: React.FC = (): JSX.Element => {
+const App: React.FC = () => {
   return (
-    <div className="App">
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={
-          <AuthLayout>
-            <Login />
-          </AuthLayout>
-        } />
-        <Route path="/signup" element={
-          <AuthLayout>
-            <SignUp />
-          </AuthLayout>
-        } />
-        
-        {/* Protected routes */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-        
-        {/* Default route */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        
-        {/* 404 route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <React.Suspense fallback={<LoadingFallback />}>
+          <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={
+            <AuthLayout>
+              <LoginPage />
+            </AuthLayout>
+          } />
+          
+          <Route path="/signup" element={
+            <AuthLayout>
+              <SignupPage />
+            </AuthLayout>
+          } />
+          
+          <Route path="/forgot-password" element={
+            <AuthLayout>
+              <ForgotPasswordPage />
+            </AuthLayout>
+          } />
+          
+          <Route path="/verify-email" element={
+            <AuthLayout>
+              <VerifyEmailPage />
+            </AuthLayout>
+          } />
+          
+          {/* Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            
+            {/* Add more protected routes here */}
+            
+            {/* Default protected route */}
+            <Route index element={<Navigate to="/dashboard" replace />} />
+          </Route>
+          
+          {/* Catch-all route */}
+          <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </React.Suspense>
+      </AuthProvider>
+    </ThemeProvider>
   );
-}
+};
 
 export default App;
