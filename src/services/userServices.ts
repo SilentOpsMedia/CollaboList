@@ -52,7 +52,7 @@
  */
 
 // Firebase imports
-import { doc, setDoc, getDoc, updateDoc, DocumentData } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, DocumentData } from 'firebase/firestore';
 
 // Firebase configuration
 import { db } from '../lib/firebase';
@@ -149,6 +149,34 @@ export const userServices = {
     } catch (error) {
       console.error('Error deactivating user:', error);
       throw new Error('Failed to deactivate user');
+    }
+  },
+  
+  /**
+   * Permanently deletes a user document from Firestore
+   * @param {string} userId - The ID of the user to delete
+   * @throws {Error} If the user deletion fails
+   */
+  async deleteUser(userId: string): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (!userDoc.exists()) {
+        console.warn(`User document with ID ${userId} not found.`);
+        return;
+      }
+      
+      // First, deactivate the user to prevent any further actions
+      await this.deactivateUser(userId);
+      
+      // Then perform a hard delete
+      await deleteDoc(userRef);
+      
+      console.log(`User document ${userId} deleted successfully.`);
+    } catch (error) {
+      console.error('Error deleting user document:', error);
+      throw new Error('Failed to delete user document');
     }
   }
 };

@@ -127,6 +127,7 @@ export interface AuthContextType {
   isAppleSignInAvailable: boolean;                            // Check if Apple sign-in is supported
   sendPasswordResetEmail: (email: string) => Promise<void>;   // Reset password
   signOut: () => Promise<void>;                              // Sign out current user
+  deleteUser: (password: string) => Promise<void>;
   isInitialized: boolean;                                    // Whether auth state is initialized
 }
 
@@ -706,6 +707,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check if the current user's email is verified
   const isEmailVerified = user?.emailVerified || false;
 
+  /**
+   * Deletes the currently authenticated user's account after re-authentication
+   * @param password - The user's current password for re-authentication
+   * @throws {Error} If no user is signed in or if deletion fails
+   */
+  const deleteUser = async (password: string): Promise<void> => {
+    if (!auth.currentUser?.email) {
+      throw new Error('No user is currently signed in');
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Re-authenticate user before deletion
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email,
+        password
+      );
+      
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      
+      // Delete user document from Firestore if it exists
+      if (auth.currentUser.uid) {
+        try {
+          await userServices.deleteUser(auth.currentUser.uid);
+        } catch (error) {
+          console.error('Error deleting user data:', error);
+          // Continue with account deletion even if Firestore deletion fails
+        }
+      }
+      
+      // Delete the user account
+      await auth.currentUser.delete();
+      
+      // Update local state
+      setUser(null);
+      
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      const errorMessage = (error as Error).message || 'Failed to delete account';
+      setError({ 
+        code: (error as any).code || 'auth/account-deletion-failed', 
+        message: errorMessage 
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading: loading || !isInitialized,
@@ -722,8 +774,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAppleSignInAvailable: isIosOrSafari(),
     sendPasswordResetEmail,
     updateUserProfile,
+    deleteUser,
     isInitialized
   };
+
+  // Debug log to check if the function is available in context
+  console.log('AuthContext value keys:', Object.keys(value));
 
   // Show loading indicator while auth is initializing
   if (!isInitialized) {

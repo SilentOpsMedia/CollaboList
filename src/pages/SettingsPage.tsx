@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { 
   Container, 
   Typography, 
@@ -11,11 +12,16 @@ import {
   AlertTitle,
   Tabs,
   Tab,
-  Grid
+  Grid,
+  Card,
+  CardContent,
+  CardActions
 } from '@mui/material';
 import { Timestamp } from 'firebase/firestore';
+import DeleteIcon from '@mui/icons-material/Delete';
 import UpdateEmailForm from '../components/settings/UpdateEmailForm';
 import UpdatePasswordForm from '../components/settings/UpdatePasswordForm';
+import { DeleteAccountDialog } from '../components/dialogs/DeleteAccountDialog';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -51,8 +57,45 @@ function a11yProps(index: number) {
 }
 
 const SettingsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, deleteUser, signOut } = useAuth();
+  const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async (password: string) => {
+    try {
+      setIsDeleting(true);
+      setError(null);
+      
+      // Delete the user account
+      await deleteUser(password);
+      
+      // Sign out the user after successful deletion
+      await signOut();
+      
+      // Redirect to home page
+      navigate('/');
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      setError('Failed to delete account. Please try again.');
+      throw err; // Re-throw to be handled by the dialog
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  const handleOpenDeleteDialog = () => {
+    setError(null);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleCloseDeleteDialog = () => {
+    if (!isDeleting) {
+      setDeleteDialogOpen(false);
+    }
+  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -128,12 +171,42 @@ const SettingsPage: React.FC = () => {
               <Typography variant="body2" color="text.secondary" paragraph>
                 For security reasons, you'll need to confirm your current password when changing sensitive account information.
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" paragraph>
                 Last sign-in: {user.metadata?.lastSignInTime && typeof user.metadata.lastSignInTime === 'string'
                   ? new Date(user.metadata.lastSignInTime).toLocaleString() 
                   : 'Unknown'}
               </Typography>
+              
+              <Divider sx={{ my: 4 }} />
+              
+              <Card variant="outlined" sx={{ borderColor: 'error.main' }}>
+                <CardContent>
+                  <Typography variant="h6" color="error" gutterBottom>
+                    Danger Zone
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" paragraph>
+                    Once you delete your account, there is no going back. Please be certain.
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
+                  <Button 
+                    variant="outlined" 
+                    color="error" 
+                    startIcon={<DeleteIcon />}
+                    onClick={handleOpenDeleteDialog}
+                    disabled={isDeleting}
+                  >
+                    Delete My Account
+                  </Button>
+                </CardActions>
+              </Card>
             </Box>
+            
+            <DeleteAccountDialog 
+              open={deleteDialogOpen}
+              onClose={handleCloseDeleteDialog}
+              onConfirm={handleDeleteAccount}
+            />
           </TabPanel>
         </Paper>
       </Box>

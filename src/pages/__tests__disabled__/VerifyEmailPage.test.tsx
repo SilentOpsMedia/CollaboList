@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '../../test-utils';
+import { render, screen, waitFor, fireEvent } from '../../test-utils';
 import VerifyEmailPage from '../VerifyEmailPage';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -8,16 +8,22 @@ jest.mock('../../contexts/AuthContext');
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
+// Import the createMockUser helper
+import { createMockUser } from '../../test-utils/auth-test-utils';
+
 // Mock implementations
 const mockReloadUser = jest.fn();
 const mockSendEmailVerification = jest.fn();
 
+// Create a mock user with all required properties
+const mockUser = createMockUser({
+  email: 'test@example.com',
+  emailVerified: false,
+  sendEmailVerification: mockSendEmailVerification,
+});
+
 const defaultAuthState = {
-  user: {
-    email: 'test@example.com',
-    emailVerified: false,
-    sendEmailVerification: mockSendEmailVerification,
-  },
+  user: mockUser,
   loading: false,
   error: null,
   signIn: jest.fn(),
@@ -28,10 +34,13 @@ const defaultAuthState = {
   sendPasswordResetEmail: jest.fn(),
   updateEmail: jest.fn(),
   updatePassword: jest.fn(),
+  changePassword: jest.fn(),
+  deleteUser: jest.fn(),
   sendEmailVerification: mockSendEmailVerification,
   reloadUser: mockReloadUser,
   isEmailVerified: false,
   isInitialized: true,
+  isAppleSignInAvailable: false,
 };
 
 describe('VerifyEmailPage', () => {

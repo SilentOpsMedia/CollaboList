@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '../../test-utils';
+import { defaultAuthContext } from '../../test-utils/auth-test-utils';
 import LoginPage from '../LoginPage';
 import { createMockUser } from '../../test-utils';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,6 +33,9 @@ const defaultAuthState = {
   isAppleSignInAvailable: false, // Add missing property
 };
 
+/**
+ * @core
+ */
 describe('LoginPage', () => {
   const mockUser = createMockUser({
     email: 'test@example.com',
@@ -44,7 +48,7 @@ describe('LoginPage', () => {
     
     // Set up the default mock implementation
     mockUseAuth.mockImplementation(() => ({
-      ...defaultAuthState,
+      ...defaultAuthContext, // Use the default auth context
       signIn: mockSignIn,
       signInWithGoogle: mockSignInWithGoogle,
       signInWithApple: mockSignInWithApple,
@@ -152,6 +156,15 @@ describe('LoginPage', () => {
     mockUseAuth.mockImplementation(() => ({
       ...defaultAuthState,
       loading: true,
+      signIn: mockSignIn,
+      signInWithGoogle: mockSignInWithGoogle,
+      signInWithApple: mockSignInWithApple,
+      signUp: jest.fn(),
+      signOut: jest.fn(),
+      sendPasswordResetEmail: jest.fn(),
+      updateEmail: jest.fn(),
+      changePassword: jest.fn(),
+      sendEmailVerification: jest.fn(),
     }));
     
     render(<LoginPage />);
@@ -165,7 +178,7 @@ describe('LoginPage', () => {
   it('redirects to dashboard if already authenticated', () => {
     // Set a user in the auth context
     mockUseAuth.mockImplementation(() => ({
-      ...defaultAuthState,
+      ...defaultAuthContext, // Use the default auth context
       user: mockUser,
     }));
     

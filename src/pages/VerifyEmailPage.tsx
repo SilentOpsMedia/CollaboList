@@ -18,16 +18,16 @@ const VerifyEmailPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [verificationSent, setVerificationSent] = useState(false);
   
-  const { currentUser, sendEmailVerification } = useAuth();
+  const { user, sendEmailVerification } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
   // Check if user is already verified
   useEffect(() => {
-    if (currentUser?.emailVerified) {
+    if (user?.emailVerified) {
       navigate(location.state?.from || '/dashboard', { replace: true });
     }
-  }, [currentUser, navigate, location.state]);
+  }, [user, navigate, location.state]);
   
   // Check for email verification action
   useEffect(() => {
@@ -43,7 +43,7 @@ const VerifyEmailPage: React.FC = () => {
   }, []);
 
   const handleResendVerification = async () => {
-    if (!currentUser) {
+    if (!user) {
       return setError('No user is signed in');
     }
     
@@ -92,7 +92,7 @@ const VerifyEmailPage: React.FC = () => {
           ) : (
             <>
               <Typography variant="body1" color="text.secondary" sx={{ mt: 2, mb: 3 }}>
-                We've sent a verification link to <strong>{currentUser?.email}</strong>.
+                We've sent a verification link to <strong>{user?.email}</strong>.
                 Please check your email and click the link to verify your account.
               </Typography>
               

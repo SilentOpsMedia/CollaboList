@@ -1,7 +1,10 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '../../test-utils';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { User as FirebaseUser } from 'firebase/auth';
 import SignupPage from '../SignupPage';
 import { createMockUser } from '../../test-utils';
+import { defaultAuthContext } from '../../test-utils/auth-test-utils';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Mock the useAuth hook
@@ -14,36 +17,24 @@ const mockSignUp = jest.fn();
 const mockSignInWithGoogle = jest.fn();
 const mockSignInWithApple = jest.fn();
 
-const defaultAuthState = {
-  user: null,
-  loading: false,
-  error: null,
-  signIn: jest.fn(),
-  signUp: mockSignUp,
-  signOut: jest.fn(),
-  signInWithGoogle: mockSignInWithGoogle,
-  signInWithApple: mockSignInWithApple,
-  sendPasswordResetEmail: jest.fn(),
-  updateEmail: jest.fn(),
-  updatePassword: jest.fn(),
-  sendEmailVerification: jest.fn(),
-  reloadUser: jest.fn(),
-  isEmailVerified: false,
-  isInitialized: true,
-  isAppleSignInAvailable: false,
-};
-
+/**
+ * @core
+ */
 describe('SignupPage', () => {
   const mockUser = createMockUser({
     email: 'newuser@example.com',
     displayName: 'New User',
     emailVerified: false,
+    role: 'user' as const,
   });
 
   beforeEach(() => {
+    // Reset all mocks before each test
     jest.clearAllMocks();
+    
+    // Set up the default mock implementation
     mockUseAuth.mockImplementation(() => ({
-      ...defaultAuthState,
+      ...defaultAuthContext, // Use the default auth context
       signUp: mockSignUp,
       signInWithGoogle: mockSignInWithGoogle,
       signInWithApple: mockSignInWithApple,
@@ -161,7 +152,7 @@ describe('SignupPage', () => {
   it('shows loading state during authentication', () => {
     // Set loading to true in the auth context
     mockUseAuth.mockImplementation(() => ({
-      ...defaultAuthState,
+      ...defaultAuthContext,
       loading: true,
     }));
     
@@ -174,11 +165,75 @@ describe('SignupPage', () => {
   });
   
   it('redirects to dashboard if already authenticated', () => {
-    // Set a user in the auth context
-    mockUseAuth.mockImplementation(() => ({
-      ...defaultAuthState,
-      user: mockUser,
-    }));
+    // Create a properly typed mock user with all required properties
+    const mockUser = {
+      ...createMockUser({
+        id: 'test-user-id',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        emailVerified: true,
+        role: 'user' as const,
+        isActive: true,
+        photoURL: 'https://example.com/photo.jpg',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        metadata: {
+          lastLogin: new Date().toISOString(),
+          failedLoginAttempts: 0,
+          preferences: {
+            theme: 'light' as 'light' | 'dark' | 'system',
+            notifications: {
+              email: true,
+              push: true,
+            },
+          },
+        } as const,
+      }),
+      // Ensure role is properly typed
+      role: 'user' as const,
+    };
+    
+    // Create a properly typed user object that matches the expected User type
+    const userWithProperTypes = {
+      ...mockUser,
+      // Ensure theme is properly typed
+      metadata: {
+        ...mockUser.metadata,
+        preferences: {
+          ...mockUser.metadata.preferences,
+          theme: 'light' as const
+        }
+      },
+      // Firebase User properties
+      uid: mockUser.id,
+      providerData: [],
+      refreshToken: 'mock-refresh-token',
+      getIdToken: jest.fn().mockResolvedValue('mock-id-token'),
+      getIdTokenResult: jest.fn().mockResolvedValue({}),
+      reload: jest.fn().mockResolvedValue(undefined),
+      toJSON: jest.fn()
+    };
+    
+    const mockAuthContext = {
+      ...defaultAuthContext,
+      user: userWithProperTypes as unknown as FirebaseUser & typeof mockUser,
+      isInitialized: true,
+      // Add any other required auth methods with proper types
+      updateEmail: jest.fn().mockResolvedValue(undefined),
+      changePassword: jest.fn().mockResolvedValue(undefined),
+      sendEmailVerification: jest.fn().mockResolvedValue(undefined),
+      isEmailVerified: true,
+      error: null,
+      signUp: jest.fn().mockResolvedValue(undefined),
+      signIn: jest.fn().mockResolvedValue(undefined),
+      signInWithGoogle: jest.fn().mockResolvedValue(undefined),
+      signInWithApple: jest.fn().mockResolvedValue(undefined),
+      isAppleSignInAvailable: false,
+      sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+      signOut: jest.fn().mockResolvedValue(undefined),
+      deleteUser: jest.fn().mockResolvedValue(undefined),
+    };
+    mockUseAuth.mockImplementation(() => mockAuthContext);
     
     render(<SignupPage />);
     
