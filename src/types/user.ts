@@ -97,7 +97,7 @@ export interface User {
    * User's role in the system
    * @default 'user'
    */
-  role?: 'user' | 'admin' | 'moderator';
+  role?: 'user' | 'admin' | 'moderator' | 'guest';
   
   /** 
    * Timestamp when the user was created
@@ -167,7 +167,7 @@ export interface UserInput {
   isActive?: boolean;
   
   /** User's role in the system */
-  role?: 'user' | 'admin' | 'moderator';
+  role?: 'user' | 'admin' | 'moderator' | 'guest';
   
   /** Timestamp when the user was created */
   createdAt?: Timestamp | Date | string;
@@ -212,7 +212,7 @@ export interface UserUpdate {
   isActive?: boolean;
   
   /** User's role */
-  role?: 'user' | 'admin' | 'moderator';
+  role?: 'user' | 'admin' | 'moderator' | 'guest';
   
   /** Updated metadata */
   metadata?: Record<string, unknown>;

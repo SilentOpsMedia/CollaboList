@@ -32,7 +32,12 @@ import {
   updateEmail as firebaseUpdateEmail,                   // For updating email
   updateProfile as firebaseUpdateProfile,               // For updating profile
   updatePassword,                                      // For updating password
-  sendEmailVerification as firebaseSendEmailVerification // For sending email verification
+  sendEmailVerification as firebaseSendEmailVerification, // For sending email verification
+  signInAnonymously as firebaseSignInAnonymously,      // For anonymous authentication
+  linkWithCredential,                                  // For linking auth providers
+  EmailAuthProvider as FirebaseEmailAuthProvider,      // For email/password auth
+  AuthCredential,                                     // For auth credentials
+  linkWithPopup                                        // For linking with popup providers
 } from 'firebase/auth';
 
 // Our Firebase configuration and utilities
@@ -106,7 +111,7 @@ interface AuthErrorWithCode extends Error {
  * return <button onClick={() => signIn('user@example.com', 'password')}>Sign In</button>;
  */
 export interface AuthContextType {
-  // Current authenticated user or null if not authenticated
+  // Current authenticated user or null
   user: User | null;
 
   // Loading state for auth operations
@@ -132,11 +137,16 @@ export interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;  // Sign in with email
   signInWithGoogle: () => Promise<void>;                      // Google OAuth sign-in
   signInWithApple: () => Promise<void>;                       // Apple OAuth sign-in
+  signInAnonymously: () => Promise<void>;                     // Anonymous sign-in
   isAppleSignInAvailable: boolean;                            // Check if Apple sign-in is supported
   sendPasswordResetEmail: (email: string) => Promise<void>;   // Reset password
   signOut: () => Promise<void>;                              // Sign out current user
   deleteUser: (password: string) => Promise<void>;
   isInitialized: boolean;                                    // Whether auth state is initialized
+  isAnonymous: boolean;                                      // Whether current user is anonymous
+  linkWithEmail: (email: string, password: string) => Promise<void>; // Link anonymous account with email
+  linkWithGoogle: () => Promise<void>;                       // Link anonymous account with Google
+  linkWithApple: () => Promise<void>;                        // Link anonymous account with Apple
 }
 
 /**
@@ -183,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);      // Loading state for auth operations
   const [error, setError] = useState<{ code: string; message: string } | null>(null);  // Authentication errors
   const [isInitialized, setIsInitialized] = useState<boolean>(false);  // Whether auth is initialized
+  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);  // Whether current user is anonymous
 
   /**
    * Effect hook to set up authentication state listener
@@ -208,34 +219,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         try {
           if (firebaseUser) {
-            console.log('Auth state changed: User signed in');
+            console.log('Auth state changed: User signed in', { isAnonymous: firebaseUser.isAnonymous });
+            
+            // Check if user is anonymous
+            const userIsAnonymous = firebaseUser.isAnonymous;
+            setIsAnonymous(userIsAnonymous);
             
             // Map Firebase user to our User type
             const mappedUser: User = {
               id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email || (userIsAnonymous ? '' : 'no-email@example.com'),
+              displayName: firebaseUser.displayName || 
+                         (userIsAnonymous ? 'Guest User' : firebaseUser.email?.split('@')[0] || 'User'),
               ...(firebaseUser.photoURL && { photoURL: firebaseUser.photoURL }),
               isActive: true,
-              role: 'user',
+              role: userIsAnonymous ? 'guest' : 'user',
               metadata: {
                 lastLogin: new Date(),
                 failedLoginAttempts: 0,
                 preferences: {
                   theme: 'system',
                   notifications: {
-                    email: true,
-                    push: true
+                    email: !userIsAnonymous, // Disable email notifications for anonymous users by default
+                    push: !userIsAnonymous   // Disable push notifications for anonymous users by default
                   }
                 }
               },
               emailVerified: firebaseUser.emailVerified || false,
               createdAt: new Date(),
-              updatedAt: new Date()
+              updatedAt: new Date(),
+              isAnonymous: userIsAnonymous
             };
+            
+            // For anonymous users, ensure we have a document in Firestore
+            if (userIsAnonymous) {
+              try {
+                const userDoc = await userServices.getUser(firebaseUser.uid);
+                if (!userDoc) {
+                  // Create a minimal user document for anonymous users
+                  // Generate a random password for anonymous users (won't be used for auth)
+                  const tempPassword = `temp_${Math.random().toString(36).substring(2, 15)}`;
+                  
+                  await userServices.createUser({
+                    ...mappedUser,
+                    password: tempPassword, // Required by UserInput type
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                  });
+                }
+              } catch (err) {
+                console.error('Error handling anonymous user document:', err);
+              }
+            }
+            
             setUser(mappedUser);
           } else {
             setUser(null);
+            setIsAnonymous(false);
           }
         } catch (error) {
           console.error('Error processing auth state:', error);
@@ -354,30 +394,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         message: error.message || 'Failed to sign in. Please check your credentials.'
       });
       throw error;
-    }
-  };
-
-
-
-  /**
-   * Signs out the current user
-   * @throws {Error} If sign out fails
-   */
-  const signOut = async (): Promise<void> => {
-    try {
-      setLoading(true);
-      setError(null);
-      await firebaseAuth.signOut();
-      setUser(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setError({
-        code: (error as any).code || 'auth/sign-out-failed',
-        message: 'Failed to sign out. Please try again.'
-      });
-      throw error;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -715,6 +731,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Signs in a user anonymously
+   * @throws {Error} If anonymous sign-in fails
+   */
+  const signInAnonymously = async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Sign in anonymously using Firebase Auth
+      // The auth state listener will handle updating the user state
+      await firebaseSignInAnonymously(auth);
+      
+      console.log('Anonymous sign-in successful');
+    } catch (error) {
+      const errorMessage = getAuthErrorMessage(error as Error);
+      setError({
+        code: (error as AuthErrorWithCode).code || 'auth/anonymous-signin-failed',
+        message: errorMessage
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to get user-friendly error messages
+  const getAuthErrorMessage = (error: Error): string => {
+    const errorCode = (error as AuthErrorWithCode).code;
+    
+    switch (errorCode) {
+      case 'auth/email-already-in-use':
+        return 'This email is already in use by another account.';
+      case 'auth/invalid-email':
+        return 'The email address is not valid.';
+      case 'auth/operation-not-allowed':
+        return 'Email/password accounts are not enabled.';
+      case 'auth/weak-password':
+        return 'The password is too weak.';
+      case 'auth/user-disabled':
+        return 'This user account has been disabled.';
+      case 'auth/user-not-found':
+        return 'No user found with this email address.';
+      case 'auth/wrong-password':
+        return 'The password is invalid.';
+      case 'auth/too-many-requests':
+        return 'Too many unsuccessful login attempts. Please try again later.';
+      case 'auth/requires-recent-login':
+        return 'Please log in again to verify your identity.';
+      default:
+        return error.message || 'An unknown error occurred. Please try again.';
+    }
+  };
+
   // Send email verification to the current user
   const sendEmailVerification = async (): Promise<void> => {
     if (!auth.currentUser) {
@@ -795,6 +865,125 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  /**
+   * Signs out the current user
+   * @throws {Error} If sign out fails
+   */
+  const signOut = async (): Promise<void> => {
+    try {
+      setLoading(true);
+      setError(null);
+      await auth.signOut();
+      setUser(null);
+      setIsAnonymous(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setError({
+        code: (error as any).code || 'auth/sign-out-failed',
+        message: 'Failed to sign out. Please try again.'
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Links the current anonymous user with an email/password account
+   * @param email - User's email address
+   * @param password - User's password
+   * @throws {Error} If linking fails
+   */
+  const linkWithEmail = async (email: string, password: string): Promise<void> => {
+    if (!auth.currentUser) {
+      throw new Error('No user is currently signed in');
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Create email credential
+      const credential = EmailAuthProvider.credential(email, password);
+      
+      // Link the credential to the anonymous account
+      await linkWithCredential(auth.currentUser, credential);
+      
+      console.log('Successfully linked with email/password');
+    } catch (error) {
+      const errorMessage = getAuthErrorMessage(error as Error);
+      setError({
+        code: (error as AuthErrorWithCode).code || 'auth/link-failed',
+        message: errorMessage
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Links the current anonymous user with a Google account
+   * @throws {Error} If linking fails
+   */
+  const linkWithGoogle = async (): Promise<void> => {
+    if (!auth.currentUser) {
+      throw new Error('No user is currently signed in');
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Link with Google provider
+      await linkWithPopup(auth.currentUser, googleProvider);
+      
+      console.log('Successfully linked with Google');
+    } catch (error) {
+      const errorMessage = getAuthErrorMessage(error as Error);
+      setError({
+        code: (error as AuthErrorWithCode).code || 'auth/google-link-failed',
+        message: errorMessage
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Links the current anonymous user with an Apple ID
+   * @throws {Error} If linking fails or not on iOS/Safari
+   */
+  const linkWithApple = async (): Promise<void> => {
+    if (!isIosOrSafari()) {
+      throw new Error('Apple Sign In is only available on iOS and Safari browsers');
+    }
+
+    if (!auth.currentUser) {
+      throw new Error('No user is currently signed in');
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Link with Apple provider
+      await linkWithPopup(auth.currentUser, appleProvider);
+      
+      console.log('Successfully linked with Apple');
+    } catch (error) {
+      const errorMessage = getAuthErrorMessage(error as Error);
+      setError({
+        code: (error as AuthErrorWithCode).code || 'auth/apple-link-failed',
+        message: errorMessage
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading: loading || !isInitialized,
@@ -805,6 +994,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     signUp,
     signIn,
+    signInAnonymously,
     signOut,
     signInWithGoogle,
     signInWithApple,
@@ -812,7 +1002,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sendPasswordResetEmail,
     updateUserProfile,
     deleteUser,
-    isInitialized
+    isInitialized,
+    isAnonymous,
+    linkWithEmail,
+    linkWithGoogle,
+    linkWithApple
   };
 
   // Debug log to check if the function is available in context
